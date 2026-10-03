@@ -7,6 +7,8 @@ import { Button } from './button'
 // (Guardar y restaurar el valor previo falla con modales apilados: el que cierra
 // primero deja "hidden" guardado y el scroll queda trabado.)
 let modalesAbiertos = 0
+// Orden de apertura: Escape cierra solo el de arriba, no todos los apilados.
+const pila: symbol[] = []
 
 export function Modal({
   abierto,
@@ -28,6 +30,7 @@ export function Modal({
   footer?: ReactNode
   ancho?: string
 }) {
+  const idRef = useRef(Symbol('modal'))
   const cerrarRef = useRef(onCerrar)
   useEffect(() => {
     cerrarRef.current = onCerrar
@@ -37,13 +40,16 @@ export function Modal({
   useEffect(() => {
     if (!abierto) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cerrarRef.current()
+      if (e.key === 'Escape' && pila[pila.length - 1] === id) cerrarRef.current()
     }
+    const id = idRef.current
+    pila.push(id)
     document.addEventListener('keydown', onKey)
     modalesAbiertos++
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
+      pila.splice(pila.indexOf(id), 1)
       modalesAbiertos = Math.max(0, modalesAbiertos - 1)
       if (modalesAbiertos === 0) document.body.style.overflow = ''
     }

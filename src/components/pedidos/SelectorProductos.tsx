@@ -69,6 +69,9 @@ export function SelectorProductos({
   const [producto, setProducto] = useState<ProductoBusqueda | null>(null)
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
   const [colorALimpiar, setColorALimpiar] = useState<string | null>(null)
+  /** Cantidades con las que se abrio la grilla: sirve para saber si hay cambios sin aplicar. */
+  const [cantidadesInicial, setCantidadesInicial] = useState<Record<string, number>>({})
+  const [salida, setSalida] = useState<'cerrar' | 'volver' | null>(null)
 
   useEffect(() => {
     if (!abierto) return
@@ -124,6 +127,22 @@ export function SelectorProductos({
     const previas: Record<string, number> = {}
     for (const i of items) previas[i.variantId] = i.qty
     setCantidades(previas)
+    setCantidadesInicial(previas)
+  }
+
+  const hayCambios = Boolean(
+    producto?.product_variants.some((v) => (cantidades[v.id] ?? 0) !== (cantidadesInicial[v.id] ?? 0)),
+  )
+
+  function intentarSalir(destino: 'cerrar' | 'volver') {
+    if (hayCambios) setSalida(destino)
+    else ejecutarSalida(destino)
+  }
+
+  function ejecutarSalida(destino: 'cerrar' | 'volver') {
+    setSalida(null)
+    if (destino === 'volver') setProducto(null)
+    else onCerrar()
   }
 
   const grilla = useMemo(() => {
@@ -186,12 +205,12 @@ export function SelectorProductos({
         abierto={abierto}
         titulo={producto ? `${producto.code} — ${producto.description}` : 'Agregar productos'}
         descripcion={producto ? 'Carga las cantidades por color y talla.' : 'Productos del proveedor elegido.'}
-        onCerrar={onCerrar}
+        onCerrar={() => intentarSalir('cerrar')}
         ancho="max-w-3xl"
         footer={
           producto ? (
             <>
-              <Button variant="outline" className="mr-auto" onClick={() => setProducto(null)}>
+              <Button variant="outline" className="mr-auto" onClick={() => intentarSalir('volver')}>
                 Volver a la busqueda
               </Button>
               <span className="text-sm text-muted-foreground">
@@ -326,6 +345,14 @@ export function SelectorProductos({
           <p className="text-sm text-muted-foreground">Este producto no tiene variantes cargadas.</p>
         )}
       </Modal>
+      <ConfirmModal
+        abierto={salida !== null}
+        titulo="Cambios sin agregar"
+        mensaje="Cambiaste cantidades pero no tocaste 'Agregar al pedido'. Si sales ahora, esos cambios no se guardan."
+        textoConfirmar="Salir sin agregar"
+        onConfirmar={() => salida && ejecutarSalida(salida)}
+        onCancelar={() => setSalida(null)}
+      />
       <ConfirmModal
         abierto={colorALimpiar !== null}
         titulo="Limpiar fila"
