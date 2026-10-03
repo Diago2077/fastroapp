@@ -461,7 +461,7 @@ export function PedidoModal({
             <MenuAcciones etiqueta="Acciones" items={itemsAcciones} />
             {!nuevo && estado !== 'cancelled' && (
               <Button variant="outline" onClick={() => pedirCambioEstado(SIGUIENTE_ESTADO[estado])}>
-                Estado: {ESTADO_LABEL[estado]} → {ESTADO_LABEL[SIGUIENTE_ESTADO[estado]]}
+                {ESTADO_LABEL[estado]} → {ESTADO_LABEL[SIGUIENTE_ESTADO[estado]]}
               </Button>
             )}
             <div className="ml-auto flex gap-2">
@@ -578,7 +578,7 @@ export function PedidoModal({
                 </div>
               ) : (
                 <div className="max-h-[13.7rem] overflow-auto rounded-md border border-border">
-                  <table className="w-full text-sm">
+                  <table className="w-full whitespace-nowrap text-sm">
                     <thead className="sticky top-0 bg-card">
                       <tr className="border-b border-border text-left text-xs text-muted-foreground">
                         <th className="px-3 py-2 font-medium">Codigo</th>
