@@ -277,6 +277,7 @@ export default function Pedidos() {
         <Vacio titulo={pedidos.length === 0 ? 'Todavia no hay pedidos' : 'Sin resultados'} descripcion={pedidos.length > 0 ? 'Proba cambiando el estado o los filtros.' : undefined} />
       ) : (
         <Tabla
+          ajustarAPantalla
           columnas={columnas}
           filas={filas}
           clave={(p) => p.id}

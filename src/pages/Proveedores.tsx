@@ -104,7 +104,7 @@ export default function Proveedores() {
       ) : filtradas.length === 0 ? (
         <Vacio titulo={filas.length === 0 ? 'Sin proveedores' : 'Sin resultados'} />
       ) : (
-        <Tabla columnas={columnas} filas={filtradas} clave={(p) => p.id} onClickFila={setEdicion} ordenInicial={{ id: 'name', desc: false }} />
+        <Tabla ajustarAPantalla columnas={columnas} filas={filtradas} clave={(p) => p.id} onClickFila={setEdicion} ordenInicial={{ id: 'name', desc: false }} />
       )}
 
       <ProveedorModal

@@ -132,7 +132,7 @@ export default function Clientes() {
       ) : filtradas.length === 0 ? (
         <Vacio titulo={filas.length === 0 ? 'Sin clientes' : 'Sin resultados'} />
       ) : (
-        <Tabla columnas={columnas} filas={filtradas} clave={(c) => c.id} onClickFila={setEdicion} />
+        <Tabla ajustarAPantalla columnas={columnas} filas={filtradas} clave={(c) => c.id} onClickFila={setEdicion} />
       )}
 
       <ClienteModal

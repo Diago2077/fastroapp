@@ -199,7 +199,7 @@ export default function Productos() {
       ) : filas.length === 0 ? (
         <Vacio titulo={productos.length === 0 ? 'Sin productos' : 'Sin resultados'} />
       ) : (
-        <Tabla columnas={columnas} filas={filas} clave={(f) => f.clave} onClickFila={(f) => setDetalle(f.producto)} />
+        <Tabla ajustarAPantalla columnas={columnas} filas={filas} clave={(f) => f.clave} onClickFila={(f) => setDetalle(f.producto)} />
       )}
 
       <DetalleProducto
