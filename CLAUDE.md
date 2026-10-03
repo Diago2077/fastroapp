@@ -248,24 +248,25 @@ crearlo, aunque quien arma el pedido no pueda verlo.
 `app_config.size_order` (JSON). `src/lib/config.ts` lo expone como
 `compararTallas`; las tallas sin configurar van al final en orden natural.
 
-### Notificaciones push y reportes por correo
-- Edge Functions en `supabase/functions/` (`send-push`, `send-report`), desplegadas
-  con Verify JWT **apagado**: validan el JWT ellas mismas (manual/broadcast y el
-  reporte manual exigen admin activo; el reporte automatico exige el header
-  `x-cron-secret`). Si se redespliegan, mantener ese ajuste.
-- Secrets de las funciones (Supabase > Edge Functions > Secrets): `VAPID_PUBLIC_KEY`,
-  `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`
-  (contrasena de aplicacion de Google), `CRON_SECRET`. La clave publica VAPID
-  tambien va al front como `VITE_VAPID_PUBLIC_KEY` (Vercel y `.env`). Cambiar el
-  par VAPID invalida todas las suscripciones: cada dispositivo debe reactivar.
-- Cron diario `send-report-daily` (pg_cron + pg_net, 11:00 UTC = 8:00 Paraguay;
-  migracion 008 con placeholders: el secreto real vive solo en la base). La
-  funcion decide si toca envio semanal/mensual segun `app_config`, en hora de
-  America/Asuncion. Ver corridas: `select * from cron.job_run_details order by
-  start_time desc limit 10;`.
-- Los avisos de cambio de estado salen de `CambioEstadoModal` (fire-and-forget) a
-  `notify_recipients`, menos quien hizo el cambio. Tocar un aviso abre `/pedidos`.
-- iPhone/iPad: push solo con la app instalada en la pantalla de inicio (iOS 16.4+).
+### Notificaciones push y reportes por correo: EN PAUSA
+Decision del dueno: las notificaciones se haran en el futuro y los reportes por
+correo no se haran por ahora. No hay nada de esto en la interfaz ni se dispara
+desde la app, y el cron `send-report-daily` esta desactivado en la base.
+
+Queda guardado para retomarlo:
+- Backend: `supabase/functions/send-push` y `send-report` (siguen desplegadas en el
+  proyecto, sin secrets cargados, asi que no hacen nada), y las migraciones
+  `007_push.sql` (tabla `push_subscriptions`) y `008_reportes_cron.sql` (con
+  placeholders; no aplicar a ciegas). Los handlers `push`/`notificationclick`
+  siguen en `scripts/sw-template.js`.
+- Frontend: se saco del arbol y vive en el commit `3928924` (`src/lib/push.ts`,
+  `src/components/layout/AvisoNotificaciones.tsx`,
+  `src/components/configuracion/CorreosYAvisos.tsx`, el aviso en
+  `CambioEstadoModal` y el montaje en `AppLayout`/`Configuracion`).
+  `git show 3928924 -- <ruta>` lo recupera.
+- Al retomarlo: los secrets son `VAPID_*`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` y
+  `CRON_SECRET`; la clave publica VAPID va tambien como `VITE_VAPID_PUBLIC_KEY`.
+  Las claves de `app_config` `notify_*` y `report_*` ya estan migradas.
 
 ### Supabase local
 `enable_signup = true` en `supabase/config.toml` es solo para el stack local

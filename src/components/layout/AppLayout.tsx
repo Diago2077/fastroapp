@@ -14,7 +14,6 @@ import {
 import { useEffect, useState, type ComponentType } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CambiarMiPasswordModal } from '@/components/cuenta/CambiarMiPasswordModal'
-import { AvisoNotificaciones } from '@/components/layout/AvisoNotificaciones'
 import { Button } from '@/components/ui/button'
 import { Cargando } from '@/components/ui/estado'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
@@ -161,8 +160,6 @@ export default function AppLayout() {
           </div>
         </div>
       </header>
-
-      {usuario && <AvisoNotificaciones userId={usuario.id} />}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
