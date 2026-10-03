@@ -11,6 +11,9 @@ export interface Columna<T> {
   ancho?: number
 }
 
+/** La fuente estandar de jsPDF no tiene el simbolo del guarani: se escribe 'Gs.'. */
+const paraPdf = (v: string | number): string => String(v).replaceAll('₲', 'Gs.')
+
 export async function exportarPDF<T>(opts: {
   titulo: string
   columnas: Columna<T>[]
@@ -31,14 +34,14 @@ export async function exportarPDF<T>(opts: {
   doc.text('FASTRO S.A.', 14, 10)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text(opts.titulo, 14, 17)
+  doc.text(paraPdf(opts.titulo), 14, 17)
   doc.text(`Generado: ${new Date().toLocaleDateString('es-PY')}`, ancho - 14, 17, { align: 'right' })
 
   autoTable(doc, {
     startY: 27,
-    head: [opts.columnas.map((c) => c.header)],
-    body: opts.filas.map((f) => opts.columnas.map((c) => c.valor(f))),
-    foot: opts.pie ? [opts.pie] : undefined,
+    head: [opts.columnas.map((c) => paraPdf(c.header))],
+    body: opts.filas.map((f) => opts.columnas.map((c) => paraPdf(c.valor(f)))),
+    foot: opts.pie ? [opts.pie.map(paraPdf)] : undefined,
     footStyles: { fillColor: [235, 235, 238], textColor: 20, fontStyle: 'bold', fontSize: 8 },
     showFoot: 'lastPage',
     headStyles: { fillColor: [155, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 9 },
