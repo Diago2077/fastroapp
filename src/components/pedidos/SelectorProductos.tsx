@@ -251,12 +251,7 @@ export function SelectorProductos({
                     return (
                       <td key={talla} className="px-2 py-2 text-center">
                         {v ? (
-                          <div
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-lg border border-transparent p-1 transition-colors',
-                              (cantidades[v.id] ?? 0) > 0 && 'border-primary/40 bg-primary/15',
-                            )}
-                          >
+                          <div className="inline-flex items-center gap-1">
                             <button
                               type="button"
                               aria-label="Menos"
@@ -271,7 +266,12 @@ export function SelectorProductos({
                               onChange={(e) =>
                                 setCantidades((c) => ({ ...c, [v.id]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
                               }
-                              className="h-7 w-10 rounded-md border border-input bg-card text-center text-sm"
+                              className={cn(
+                                'h-7 w-10 rounded-md border text-center text-sm transition-colors',
+                                (cantidades[v.id] ?? 0) > 0
+                                  ? 'border-primary/50 bg-primary/20 font-semibold'
+                                  : 'border-input bg-card',
+                              )}
                             />
                             <button
                               type="button"
