@@ -218,6 +218,10 @@ las evalua en las policies. Detalles que importan:
 - Todo usuario activo **lee** los catalogos (clientes, productos, proveedores,
   config): el formulario de pedido los necesita aunque no tenga "ver" ese
   modulo. `can_view_*` solo decide si aparece la pantalla.
+- **Inicio es para todos** (sin permiso; `can_view_dashboard` quedo en la base sin
+  uso). Sus indicadores y "Ultimos pedidos" salen de `orders`, que la RLS ya limita
+  a los pedidos propios para un usuario normal (el admin ve todos). Los graficos
+  generales viven en Reportes.
 - Borrar clientes/productos/proveedores es baja logica (`active = false`), por
   eso el update tambien lo habilita `can_delete_*`.
 - **Supabase da `ALL` a `authenticated` por defecto en tablas nuevas.** Hay que
