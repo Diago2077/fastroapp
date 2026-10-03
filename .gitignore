@@ -42,3 +42,4 @@ app-base.zip
 # Migracion de datos: credenciales y contrasenas temporales
 .env.migracion.local
 migracion-contrasenas.local.txt
+secretos-etapa2.local.txt

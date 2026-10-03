@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { CorreosYAvisos } from '@/components/configuracion/CorreosYAvisos'
 import { Button } from '@/components/ui/button'
 import { Cargando } from '@/components/ui/estado'
 import { Field, Input } from '@/components/ui/field'
@@ -11,8 +12,8 @@ import { supabase } from '@/lib/supabase'
 
 /**
  * Configuracion general (solo admin; la RLS de `app_config` tambien lo exige).
- * Los correos de reporte y las notificaciones push quedan para una segunda
- * etapa (ver CLAUDE.md).
+ * Incluye reportes por correo y notificaciones push (Edge Functions
+ * send-report y send-push; ver CLAUDE.md).
  */
 export default function Configuracion() {
   const { config, cargada } = useConfig()
@@ -142,6 +143,10 @@ export default function Configuracion() {
             </>
           )}
         </Tarjeta>
+      </div>
+
+      <div className="mt-5">
+        <CorreosYAvisos />
       </div>
     </div>
   )

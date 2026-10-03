@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal'
 import { ESTADO_LABEL, type EstadoPedido } from '@/lib/database.types'
 import { mensajeError } from '@/lib/db'
 import { hoyISO } from '@/lib/format'
+import { avisarCambioDeEstado } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 
 export interface CambioEstado {
@@ -78,6 +79,7 @@ export function CambioEstadoModal({
     setGuardando(false)
     if (err) return setError(mensajeError(err, 'No se pudo cambiar el estado.'))
     toast.success(`Estado: ${ESTADO_LABEL[siguiente]}`)
+    avisarCambioDeEstado(cambio.id, siguiente)
     onHecho()
   }
 

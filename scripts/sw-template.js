@@ -69,3 +69,40 @@ self.addEventListener('fetch', (event) => {
     })(),
   )
 })
+
+// Notificaciones push: muestra el aviso que envia la Edge Function send-push.
+self.addEventListener('push', (event) => {
+  let d = {}
+  try {
+    d = event.data ? event.data.json() : {}
+  } catch {
+    d = {}
+  }
+  event.waitUntil(
+    self.registration.showNotification(d.title || 'FASTRO', {
+      body: d.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/badge-96.png',
+      tag: d.tag || 'fastro',
+      data: { url: d.url || '/' },
+    }),
+  )
+})
+
+// Al tocar el aviso: enfocar una pestana abierta (llevandola a la ruta) o abrir la app.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const destino = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      for (const v of ventanas) {
+        if ('focus' in v) {
+          v.focus()
+          if ('navigate' in v) v.navigate(destino).catch(() => {})
+          return
+        }
+      }
+      return self.clients.openWindow(destino)
+    }),
+  )
+})

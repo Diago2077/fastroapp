@@ -248,12 +248,24 @@ crearlo, aunque quien arma el pedido no pueda verlo.
 `app_config.size_order` (JSON). `src/lib/config.ts` lo expone como
 `compararTallas`; las tallas sin configurar van al final en orden natural.
 
-### Pendiente (segunda etapa)
-Notificaciones push (`send-push`, `push_subscriptions`) y reportes por correo
-(`send-report` + cron) de la app vieja todavia no estan portados. Ojo al
-portarlos: `send-push` usa `notify_recipients` aunque su comentario diga
-`report_recipients`, y `send-report` evalua el dia en UTC (usar
-America/Asuncion).
+### Notificaciones push y reportes por correo
+- Edge Functions en `supabase/functions/` (`send-push`, `send-report`), desplegadas
+  con Verify JWT **apagado**: validan el JWT ellas mismas (manual/broadcast y el
+  reporte manual exigen admin activo; el reporte automatico exige el header
+  `x-cron-secret`). Si se redespliegan, mantener ese ajuste.
+- Secrets de las funciones (Supabase > Edge Functions > Secrets): `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`
+  (contrasena de aplicacion de Google), `CRON_SECRET`. La clave publica VAPID
+  tambien va al front como `VITE_VAPID_PUBLIC_KEY` (Vercel y `.env`). Cambiar el
+  par VAPID invalida todas las suscripciones: cada dispositivo debe reactivar.
+- Cron diario `send-report-daily` (pg_cron + pg_net, 11:00 UTC = 8:00 Paraguay;
+  migracion 008 con placeholders: el secreto real vive solo en la base). La
+  funcion decide si toca envio semanal/mensual segun `app_config`, en hora de
+  America/Asuncion. Ver corridas: `select * from cron.job_run_details order by
+  start_time desc limit 10;`.
+- Los avisos de cambio de estado salen de `CambioEstadoModal` (fire-and-forget) a
+  `notify_recipients`, menos quien hizo el cambio. Tocar un aviso abre `/pedidos`.
+- iPhone/iPad: push solo con la app instalada en la pantalla de inicio (iOS 16.4+).
 
 ### Supabase local
 `enable_signup = true` en `supabase/config.toml` es solo para el stack local
