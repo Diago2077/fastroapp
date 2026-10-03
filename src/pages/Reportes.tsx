@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { GraficoBarras, GraficoDona } from '@/components/ui/graficos'
+import { Select } from '@/components/ui/field'
 import { EncabezadoPagina, Tarjeta } from '@/components/ui/pagina'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
@@ -38,6 +39,8 @@ export default function Reportes() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pestana, setPestana] = useState<Pestana>('temporada')
+  /** Filtro de temporada de la pestana "Por Vendedor" ('' = todas). */
+  const [tempVendedor, setTempVendedor] = useState('')
 
   useEffect(() => {
     let vivo = true
@@ -51,15 +54,22 @@ export default function Reportes() {
   }, [])
 
   const ok = useMemo(() => vigentes(pedidos), [pedidos])
+  const temporadas = useMemo(
+    () => [...new Set(ok.map((p) => p.season).filter((s): s is string => Boolean(s)))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true })),
+    [ok],
+  )
 
   const grupos = useMemo(() => {
     if (pestana === 'temporada') return agrupar(ok, (p) => p.season ?? 'Sin temporada').sort((a, b) => b.ventas - a.ventas)
-    if (pestana === 'vendedor') return agrupar(ok, (p) => p.vendedor?.nombre ?? 'Sin vendedor').sort((a, b) => b.ventas - a.ventas)
+    if (pestana === 'vendedor') {
+      const deLaTemporada = ok.filter((p) => !tempVendedor || p.season === tempVendedor)
+      return agrupar(deLaTemporada, (p) => p.vendedor?.nombre ?? 'Sin vendedor').sort((a, b) => b.ventas - a.ventas)
+    }
     const deLaTemporada = ok.filter((p) => !temporadaActual || p.season === temporadaActual)
     return agrupar(deLaTemporada, (p) => p.providers?.name ?? 'Sin proveedor').sort((a, b) =>
       verCosto ? b.costo - a.costo : b.ventas - a.ventas,
     )
-  }, [ok, pestana, temporadaActual, verCosto])
+  }, [ok, pestana, temporadaActual, verCosto, tempVendedor])
 
   const totalVentas = grupos.reduce((s, g) => s + g.ventas, 0)
   const totalCosto = grupos.reduce((s, g) => s + g.costo, 0)
@@ -94,7 +104,7 @@ export default function Reportes() {
 
   const titulo = {
     temporada: 'Ventas por temporada',
-    vendedor: 'Ventas por vendedor',
+    vendedor: `Ventas por vendedor${tempVendedor ? ` · ${tempVendedor}` : ''}`,
     proveedor: `Costo por proveedor${temporadaActual ? ` · ${temporadaActual}` : ''}`,
   }[pestana]
   const archivo = { temporada: 'ventas-temporada', vendedor: 'ventas-vendedor', proveedor: 'costo-proveedor' }[pestana]
@@ -147,6 +157,20 @@ export default function Reportes() {
           </button>
         ))}
       </div>
+
+      {pestana === 'vendedor' && temporadas.length > 0 && (
+        <div className="mb-4 flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Temporada</span>
+          <Select className="h-9 w-auto" value={tempVendedor} onChange={(e) => setTempVendedor(e.target.value)}>
+            <option value="">Todas</option>
+            {temporadas.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {cargando ? (
         <Cargando />

@@ -29,8 +29,8 @@ interface ItemNav {
   label: string
   icono: ComponentType<{ className?: string }>
   end?: boolean
-  /** Permiso que habilita el link. 'admin' = solo administradores. */
-  permiso: PermisoKey | 'admin'
+  /** Permiso que habilita el link. 'admin' = solo administradores, 'todos' = cualquier usuario activo. */
+  permiso: PermisoKey | 'admin' | 'todos'
   /** Aparece en la barra inferior del celular (el resto va en "Mas"). */
   principal?: boolean
 }
@@ -41,7 +41,7 @@ interface ItemNav {
  * quien protege los datos es la RLS, no esta lista.
  */
 const NAV: ItemNav[] = [
-  { to: '/', label: 'Inicio', icono: LayoutDashboard, end: true, permiso: 'can_view_dashboard', principal: true },
+  { to: '/', label: 'Inicio', icono: LayoutDashboard, end: true, permiso: 'todos', principal: true },
   { to: '/pedidos', label: 'Pedidos', icono: ShoppingCart, permiso: 'can_view_orders', principal: true },
   { to: '/productos', label: 'Productos', icono: Package, permiso: 'can_view_products', principal: true },
   { to: '/clientes', label: 'Clientes', icono: Store, permiso: 'can_view_clients', principal: true },
@@ -70,7 +70,9 @@ export default function AppLayout() {
   const [modalPassword, setModalPassword] = useState(false)
   const [masAbierto, setMasAbierto] = useState(false)
 
-  const links = NAV.filter((item) => (item.permiso === 'admin' ? esAdmin : can(item.permiso)))
+  const links = NAV.filter((item) =>
+    item.permiso === 'todos' ? true : item.permiso === 'admin' ? esAdmin : can(item.permiso),
+  )
   const principales = links.filter((l) => l.principal)
   const secundarios = links.filter((l) => !l.principal)
 

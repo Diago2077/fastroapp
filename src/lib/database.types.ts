@@ -28,13 +28,13 @@ export const ROL_LABEL: Record<Rol, string> = {
 export const ROLES: readonly Rol[] = ['usuario', 'admin']
 
 /**
- * Permisos finos por persona (migracion 004). Un admin activo los tiene todos
+ * Permisos finos por persona (migracion 004). El Inicio es para todos: la columna
+ * `can_view_dashboard` sigue en la base pero ya no se usa. Un admin activo los tiene todos
  * sin mirar estas columnas.
  */
 export const PERMISOS_FLAGS = [
   'can_see_cost',
   'can_export_excel',
-  'can_view_dashboard',
   'can_view_orders',
   'can_create_orders',
   'can_edit_orders',

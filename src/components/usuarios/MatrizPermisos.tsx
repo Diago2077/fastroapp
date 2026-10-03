@@ -1,7 +1,6 @@
 import type { PermisoKey, Permisos } from '@/lib/database.types'
 
 const FILAS: { modulo: string; ver?: PermisoKey; crear?: PermisoKey; editar?: PermisoKey; borrar?: PermisoKey }[] = [
-  { modulo: 'Dashboard', ver: 'can_view_dashboard' },
   { modulo: 'Pedidos', ver: 'can_view_orders', crear: 'can_create_orders', editar: 'can_edit_orders', borrar: 'can_delete_orders' },
   { modulo: 'Clientes', ver: 'can_view_clients', crear: 'can_create_clients', editar: 'can_edit_clients', borrar: 'can_delete_clients' },
   { modulo: 'Productos', ver: 'can_view_products', crear: 'can_create_products', editar: 'can_edit_products', borrar: 'can_delete_products' },
