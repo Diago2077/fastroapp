@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { compararTallas } from '@/lib/config'
 import { formatGs } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 
 export interface ItemPedido {
   variantId: string
@@ -179,7 +180,10 @@ export function SelectorProductos({
             <Button variant="outline" className="mr-auto" onClick={() => setProducto(null)}>
               Volver a la busqueda
             </Button>
-            <Button onClick={aplicar}>Agregar al pedido ({total} u.)</Button>
+            <span className="text-sm text-muted-foreground">
+              Total: <strong className="tabular text-foreground">{total} u.</strong>
+            </span>
+            <Button onClick={aplicar}>Agregar al pedido</Button>
           </>
         ) : (
           <Button variant="outline" onClick={onCerrar}>
@@ -247,7 +251,12 @@ export function SelectorProductos({
                     return (
                       <td key={talla} className="px-2 py-2 text-center">
                         {v ? (
-                          <div className="inline-flex items-center gap-1">
+                          <div
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-lg border border-transparent p-1 transition-colors',
+                              (cantidades[v.id] ?? 0) > 0 && 'border-primary/40 bg-primary/15',
+                            )}
+                          >
                             <button
                               type="button"
                               aria-label="Menos"
