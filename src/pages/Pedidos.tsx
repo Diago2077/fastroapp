@@ -6,9 +6,8 @@ import { PedidoModal } from '@/components/pedidos/PedidoModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { FiltroMulti } from '@/components/ui/filtro-multi'
-import { Select } from '@/components/ui/field'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
+import { ListaFiltro, OpcionUnica, PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { ESTADO_LABEL, type EstadoPedido } from '@/lib/database.types'
@@ -26,6 +25,14 @@ import {
 import { supabase } from '@/lib/supabase'
 
 type FiltroEstado = EstadoPedido | ''
+
+const ETIQUETA_ESTADO: Record<FiltroEstado, string> = {
+  open: 'Abiertos',
+  sent: 'Enviados',
+  closed: 'Cerrados',
+  cancelled: 'Cancelados',
+  '': 'Todos',
+}
 
 export default function Pedidos() {
   const { can, esAdmin } = usePermisos()
@@ -98,6 +105,10 @@ export default function Pedidos() {
     setCambio({ id: p.id, numero: p.order_number, actual: p.status, siguiente })
   }
 
+  // Cuenta los filtros que se apartan del valor por defecto (Abiertos, sin seleccion)
+  const filtrosActivos =
+    (estado !== 'open' ? 1 : 0) + [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length
+
   const columnas: ColumnaTabla<PedidoLista>[] = [
     { id: 'num', header: 'N° Pedido', render: (p) => <span className="font-medium">{p.order_number}</span>, orden: (p) => p.order_number },
     { id: 'fecha', header: 'Fecha', render: (p) => formatFecha(p.created_at), orden: (p) => p.created_at },
@@ -144,16 +155,26 @@ export default function Pedidos() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por N° de pedido o cliente…" />
-        <Select className="h-9 w-auto" value={estado} onChange={(e) => setEstado(e.target.value as FiltroEstado)}>
-          <option value="open">Abiertos</option>
-          <option value="sent">Enviados</option>
-          <option value="closed">Cerrados</option>
-          <option value="cancelled">Cancelados</option>
-          <option value="">Todos</option>
-        </Select>
-        {esAdmin && <FiltroMulti label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
-        <FiltroMulti label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
-        <FiltroMulti label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
+        <PanelFiltros
+          activos={filtrosActivos}
+          resumen={ETIQUETA_ESTADO[estado]}
+          onLimpiar={() => {
+            setEstado('open')
+            setVendedores([])
+            setTemporadas([])
+            setProveedores([])
+          }}
+        >
+          <OpcionUnica
+            label="Estado"
+            valor={estado}
+            onChange={setEstado}
+            opciones={(Object.keys(ETIQUETA_ESTADO) as FiltroEstado[]).map((v) => ({ value: v, label: ETIQUETA_ESTADO[v] }))}
+          />
+          {esAdmin && <ListaFiltro label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
+          <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+          <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
+        </PanelFiltros>
       </div>
 
       {cargando ? (
