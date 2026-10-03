@@ -206,7 +206,7 @@ export function SelectorProductos({
         titulo={producto ? `${producto.code} — ${producto.description}` : 'Agregar productos'}
         descripcion={producto ? 'Carga las cantidades por color y talla.' : 'Productos del proveedor elegido.'}
         onCerrar={() => intentarSalir('cerrar')}
-        ancho="max-w-3xl"
+        ancho="max-w-5xl"
         footer={
           producto ? (
             <>
