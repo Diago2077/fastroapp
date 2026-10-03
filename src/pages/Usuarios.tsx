@@ -70,7 +70,7 @@ export default function Usuarios() {
           </p>
         </div>
         <Button onClick={() => setModalNuevo(true)}>
-          <Plus /> Nuevo usuario
+          <Plus /> Nuevo
         </Button>
       </div>
 

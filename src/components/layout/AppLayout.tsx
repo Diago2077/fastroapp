@@ -19,7 +19,7 @@ import { Cargando } from '@/components/ui/estado'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuth } from '@/hooks/useAuth'
 import { usePermisos } from '@/hooks/usePermisos'
-import { APP_NOMBRE, APP_VERSION } from '@/lib/app'
+import { APP_NOMBRE } from '@/lib/app'
 import { cargarConfig, limpiarConfig } from '@/lib/config'
 import { ROL_LABEL, type PermisoKey } from '@/lib/database.types'
 import { cn } from '@/lib/utils'
@@ -147,7 +147,7 @@ export default function AppLayout() {
             <div className="hidden text-right lg:block">
               <p className="text-xs font-medium text-foreground">{usuario?.nombre}</p>
               <p className="text-[11px] text-muted-foreground">
-                {rol ? ROL_LABEL[rol] : usuario?.email} · v{APP_VERSION}
+                {rol ? ROL_LABEL[rol] : usuario?.email}
               </p>
             </div>
             <ThemeToggle />
