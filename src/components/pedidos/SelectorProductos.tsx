@@ -33,6 +33,9 @@ interface ProductoBusqueda {
   }[]
 }
 
+const SELECT_PRODUCTO =
+  'id, code, description, product_variants(id, color, size, sale_price, created_at, product_variant_costs(cost_price))'
+
 const costoDe = (c: ProductoBusqueda['product_variants'][number]['product_variant_costs']): number | null => {
   if (!c) return null
   return Array.isArray(c) ? (c[0]?.cost_price ?? null) : c.cost_price
@@ -46,12 +49,15 @@ const costoDe = (c: ProductoBusqueda['product_variants'][number]['product_varian
 export function SelectorProductos({
   abierto,
   proveedorId,
+  variantInicial = null,
   items,
   onCerrar,
   onAplicar,
 }: {
   abierto: boolean
   proveedorId: string
+  /** Si viene, abre directo la grilla del producto al que pertenece esa variante. */
+  variantInicial?: string | null
   items: ItemPedido[]
   onCerrar: () => void
   onAplicar: (producto: { code: string; description: string }, variantes: ItemPedido[], idsVariantesProducto: string[]) => void
@@ -67,7 +73,23 @@ export function SelectorProductos({
     setBusqueda('')
     setResultados([])
     setProducto(null)
-  }, [abierto])
+    if (!variantInicial) return
+    let vivo = true
+    ;(async () => {
+      const { data: v } = await supabase
+        .from('product_variants')
+        .select('product_id')
+        .eq('id', variantInicial)
+        .maybeSingle()
+      if (!v || !vivo) return
+      const { data } = await supabase.from('products').select(SELECT_PRODUCTO).eq('id', v.product_id).maybeSingle()
+      if (data && vivo) elegir(data as ProductoBusqueda)
+    })()
+    return () => {
+      vivo = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir
+  }, [abierto, variantInicial])
 
   // Busqueda con espera de 250 ms entre teclas
   useEffect(() => {
@@ -82,7 +104,7 @@ export function SelectorProductos({
       const limpio = q.replace(/[%,()]/g, ' ')
       const { data } = await supabase
         .from('products')
-        .select('id, code, description, product_variants(id, color, size, sale_price, created_at, product_variant_costs(cost_price))')
+        .select(SELECT_PRODUCTO)
         .eq('active', true)
         .eq('provider_id', proveedorId)
         .or(`code.ilike.%${limpio}%,description.ilike.%${limpio}%`)

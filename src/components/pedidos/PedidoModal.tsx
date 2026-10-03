@@ -1,4 +1,4 @@
-import { Ban, FileDown, FileSpreadsheet, Minus, Plus, RotateCcw, Trash2, X } from 'lucide-react'
+import { Ban, FileDown, FileSpreadsheet, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CambioEstadoModal, type CambioEstado } from '@/components/pedidos/CambioEstadoModal'
@@ -24,6 +24,7 @@ import {
   TONO_ESTADO,
 } from '@/lib/pedidos'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 
 interface ClienteOpcion {
   id: string
@@ -94,6 +95,8 @@ export function PedidoModal({
   const [original, setOriginal] = useState('')
   const [pedido, setPedido] = useState<Pedido | null>(null)
   const [selector, setSelector] = useState(false)
+  /** Variante de la fila tocada: abre el selector directo en ese producto. */
+  const [variantEditar, setVariantEditar] = useState<string | null>(null)
   const [cambio, setCambio] = useState<CambioEstado | null>(null)
   const [confirmarSalir, setConfirmarSalir] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
@@ -217,11 +220,17 @@ export function PedidoModal({
   // Lo que le va a costar el pedido a la fabrica, en dolares (solo con can_see_cost)
   const costoFabrica = form.items.reduce((s, i) => s + i.qty * (i.cost ?? 0), 0)
 
-  const cambiarCantidad = (variantId: string, delta: number) =>
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((i) => (i.variantId === variantId ? { ...i, qty: Math.max(1, i.qty + delta) } : i)),
-    }))
+  // Una fila por producto y color: el subtotal junta todas las tallas
+  const filasColor = useMemo(() => {
+    const grupos = new Map<string, { variantId: string; code: string; description: string; color: string; subtotal: number }>()
+    for (const i of form.items) {
+      const clave = `${i.code} ${i.color}`
+      const g = grupos.get(clave)
+      if (g) g.subtotal += i.qty * i.price
+      else grupos.set(clave, { variantId: i.variantId, code: i.code, description: i.description, color: i.color, subtotal: i.qty * i.price })
+    }
+    return [...grupos.values()]
+  }, [form.items])
 
   function cambiarProveedor(id: string) {
     if (form.items.length > 0 && id !== form.providerId) {
@@ -324,7 +333,7 @@ export function PedidoModal({
         titulo={nuevo ? 'Nuevo pedido' : `Pedido ${pedido?.order_number ?? ''}`}
         onCerrar={() => {
           // Con un dialogo encima, Escape es de ese dialogo
-          if (selector || cambio || confirmarSalir || confirmarBorrar) return
+          if (selector || variantEditar || cambio || confirmarSalir || confirmarBorrar) return
           intentarCerrar()
         }}
         ancho="max-w-5xl"
@@ -421,8 +430,8 @@ export function PedidoModal({
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Cliente *" className="md:col-span-2">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]">
+              <Field label="Cliente *">
                 {bloqueado ? (
                   <Input disabled value={opcionesCliente.find((o) => o.value === form.clientId)?.label ?? ''} />
                 ) : (
@@ -448,13 +457,6 @@ export function PedidoModal({
                     </option>
                   ))}
                 </Select>
-              </Field>
-              <Field label="Temporada">
-                <Input
-                  value={form.season}
-                  disabled={bloqueado}
-                  onChange={(e) => setForm((f) => ({ ...f, season: e.target.value }))}
-                />
               </Field>
             </div>
 
@@ -484,59 +486,24 @@ export function PedidoModal({
                         <th className="px-3 py-2 font-medium">Codigo</th>
                         <th className="px-3 py-2 font-medium">Descripcion</th>
                         <th className="px-3 py-2 font-medium">Color</th>
-                        <th className="px-3 py-2 font-medium">Talla</th>
-                        <th className="px-3 py-2 text-center font-medium">Cant.</th>
-                        <th className="px-3 py-2 text-right font-medium">P. Venta</th>
                         <th className="px-3 py-2 text-right font-medium">Subtotal</th>
-                        <th />
                       </tr>
                     </thead>
                     <tbody>
-                      {form.items.map((i) => (
-                        <tr key={i.variantId} className="border-b border-border last:border-0">
-                          <td className="px-3 py-1.5 font-medium">{i.code}</td>
-                          <td className="px-3 py-1.5">{i.description}</td>
-                          <td className="px-3 py-1.5">{i.color}</td>
-                          <td className="px-3 py-1.5">{i.size}</td>
-                          <td className="px-3 py-1.5 text-center">
-                            {bloqueado ? (
-                              <strong>{i.qty}</strong>
-                            ) : (
-                              <span className="inline-flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  aria-label="Menos"
-                                  onClick={() => cambiarCantidad(i.variantId, -1)}
-                                  className="flex size-6 items-center justify-center rounded border border-border hover:bg-accent"
-                                >
-                                  <Minus className="size-3" />
-                                </button>
-                                <span className="w-8 text-center tabular">{i.qty}</span>
-                                <button
-                                  type="button"
-                                  aria-label="Mas"
-                                  onClick={() => cambiarCantidad(i.variantId, 1)}
-                                  className="flex size-6 items-center justify-center rounded border border-border hover:bg-accent"
-                                >
-                                  <Plus className="size-3" />
-                                </button>
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-1.5 text-right tabular">{formatGs(i.price)}</td>
-                          <td className="px-3 py-1.5 text-right tabular">{formatGs(i.qty * i.price)}</td>
-                          <td className="px-2">
-                            {!bloqueado && (
-                              <button
-                                type="button"
-                                aria-label="Quitar"
-                                onClick={() => setForm((f) => ({ ...f, items: f.items.filter((x) => x.variantId !== i.variantId) }))}
-                                className="text-muted-foreground hover:text-destructive"
-                              >
-                                <X className="size-4" />
-                              </button>
-                            )}
-                          </td>
+                      {filasColor.map((f) => (
+                        <tr
+                          key={`${f.code}-${f.color}`}
+                          onClick={bloqueado ? undefined : () => setVariantEditar(f.variantId)}
+                          title={bloqueado ? undefined : 'Tocar para modificar las cantidades'}
+                          className={cn(
+                            'border-b border-border last:border-0',
+                            !bloqueado && 'cursor-pointer hover:bg-accent',
+                          )}
+                        >
+                          <td className="px-3 py-2 font-medium">{f.code}</td>
+                          <td className="px-3 py-2">{f.description}</td>
+                          <td className="px-3 py-2">{f.color}</td>
+                          <td className="px-3 py-2 text-right tabular">{formatGs(f.subtotal)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -592,10 +559,14 @@ export function PedidoModal({
       </Modal>
 
       <SelectorProductos
-        abierto={selector}
+        abierto={selector || variantEditar !== null}
         proveedorId={form.providerId}
+        variantInicial={variantEditar}
         items={form.items}
-        onCerrar={() => setSelector(false)}
+        onCerrar={() => {
+          setSelector(false)
+          setVariantEditar(null)
+        }}
         onAplicar={(_producto, variantes, idsDelProducto) => {
           const ids = new Set(idsDelProducto)
           setForm((f) => ({
@@ -605,6 +576,7 @@ export function PedidoModal({
             ),
           }))
           setSelector(false)
+          setVariantEditar(null)
         }}
       />
 
