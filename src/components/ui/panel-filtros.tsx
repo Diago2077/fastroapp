@@ -92,7 +92,7 @@ export function PanelFiltros({
           style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
           className="absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-border bg-card shadow-lg"
         >
-          <div className="max-h-[65vh] space-y-4 overflow-y-auto p-4">{children}</div>
+          <div className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-4 overflow-y-auto p-4">{children}</div>
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
             <button
               type="button"
