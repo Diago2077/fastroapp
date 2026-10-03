@@ -86,8 +86,10 @@ export const GraficoBarras = forwardRef(function GraficoBarras(
       },
     },
     scales: {
-      x: { ticks: { color: texto, callback: horizontal ? formatoEje(monedaEje) : undefined }, beginAtZero: true, grid: { display: false } },
-      y: { ticks: { color: texto, callback: horizontal ? undefined : formatoEje(monedaEje) }, beginAtZero: true },
+      // Solo el eje numerico lleva el formato de moneda. Un `callback: undefined` explicito
+      // pisaria el rotulo por defecto del eje de categorias (salia "0" en vez del nombre).
+      x: { ticks: { color: texto, ...(horizontal ? { callback: formatoEje(monedaEje) } : {}) }, beginAtZero: true, grid: { display: false } },
+      y: { ticks: { color: texto, ...(horizontal ? {} : { callback: formatoEje(monedaEje) }) }, beginAtZero: true },
     },
   }
   return <Bar ref={ref as never} data={datos} options={opciones} />
