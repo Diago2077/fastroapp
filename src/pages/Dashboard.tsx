@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileDown, FileText, Plus, Truck } from 'lucide-react'
+import { ClipboardCheck, FileDown, FileText, Truck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PedidoModal } from '@/components/pedidos/PedidoModal'
@@ -146,16 +146,9 @@ export default function Dashboard() {
         titulo={`Hola${primerNombre ? `, ${primerNombre}` : ''}`}
         descripcion={descripcion || undefined}
         acciones={
-          <>
-            <Button variant="outline" size="sm" onClick={descargarPDF} disabled={cargando}>
-              <FileDown /> PDF
-            </Button>
-            {can('can_create_orders') && (
-              <Button onClick={() => setModal({ id: null })}>
-                <Plus /> Nuevo
-              </Button>
-            )}
-          </>
+          <Button variant="outline" size="sm" onClick={descargarPDF} disabled={cargando}>
+            <FileDown /> PDF
+          </Button>
         }
       />
 
