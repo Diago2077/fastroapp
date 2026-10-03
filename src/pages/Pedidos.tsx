@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { FileDown, FileSpreadsheet, Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { CambioEstadoModal, type CambioEstado } from '@/components/pedidos/CambioEstadoModal'
@@ -13,7 +13,8 @@ import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { ESTADO_LABEL, type EstadoPedido } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
-import { fechaLocalISO, formatFecha, formatGs, formatUsd, normalizar } from '@/lib/format'
+import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
+import { fechaLocalISO, formatFecha, formatGs, formatGsPdf, formatUsd, hoyISO, normalizar } from '@/lib/format'
 import {
   cambioSoloAdmin,
   costoPedido,
@@ -21,6 +22,7 @@ import {
   SIGUIENTE_ESTADO,
   TONO_ESTADO,
   totalPedido,
+  unidadesPedido,
   type PedidoLista,
 } from '@/lib/pedidos'
 import { supabase } from '@/lib/supabase'
@@ -109,6 +111,57 @@ export default function Pedidos() {
   const filtrosActivos =
     [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length + (desde || hasta ? 1 : 0)
 
+  // ── Exportar lo que muestra la lista (con los filtros aplicados) ──
+  // El costo de fabrica solo sale con can_see_cost, igual que en la tabla.
+  const verCosto = can('can_see_cost')
+  const subtituloExport = () => {
+    const partes = [`${filas.length} pedidos`, `Estado: ${estado ? ESTADO_LABEL[estado] : 'Todos'}`]
+    if (desde || hasta) partes.push(`Creados ${desde ? 'desde ' + formatFecha(desde) : ''}${desde && hasta ? ' ' : ''}${hasta ? 'hasta ' + formatFecha(hasta) : ''}`)
+    if (vendedores.length) partes.push(`Vendedor: ${vendedores.map((id) => opciones.vendedores.find((o) => o.value === id)?.label ?? id).join(', ')}`)
+    if (temporadas.length) partes.push(`Temporada: ${temporadas.join(', ')}`)
+    if (proveedores.length) partes.push(`Proveedor: ${proveedores.join(', ')}`)
+    return partes.join(' · ')
+  }
+
+  const columnasPdf: Columna<PedidoLista>[] = [
+    { header: 'N° Pedido', valor: (p) => p.order_number },
+    { header: 'Fecha', valor: (p) => formatFecha(p.created_at) },
+    { header: 'Cliente', valor: (p) => p.clients?.name ?? '' },
+    { header: 'Proveedor', valor: (p) => p.providers?.name ?? '' },
+    { header: 'Estado', valor: (p) => ESTADO_LABEL[p.status] },
+    { header: 'Unid.', valor: (p) => unidadesPedido(p) },
+    { header: 'Total', valor: (p) => formatGsPdf(totalPedido(p)) },
+    ...(verCosto ? [{ header: 'Costo fabrica', valor: (p: PedidoLista) => formatUsd(costoPedido(p)) }] : []),
+    { header: 'Vendedor', valor: (p) => p.vendedor?.nombre ?? '' },
+  ]
+
+  const columnasExcel: Columna<PedidoLista>[] = [
+    { header: 'N° Pedido', valor: (p) => p.order_number, ancho: 12 },
+    { header: 'Fecha', valor: (p) => formatFecha(p.created_at), ancho: 12 },
+    { header: 'Cliente', valor: (p) => p.clients?.name ?? '', ancho: 32 },
+    { header: 'Proveedor', valor: (p) => p.providers?.name ?? '', ancho: 26 },
+    { header: 'Temporada', valor: (p) => p.season ?? '', ancho: 12 },
+    { header: 'Estado', valor: (p) => ESTADO_LABEL[p.status], ancho: 12 },
+    { header: 'Descuento %', valor: (p) => p.discount_pct, ancho: 12 },
+    { header: 'Unidades', valor: (p) => unidadesPedido(p), ancho: 10 },
+    { header: 'Total (Gs)', valor: (p) => Math.round(totalPedido(p)), ancho: 16 },
+    ...(verCosto ? [{ header: 'Costo fabrica (US$)', valor: (p: PedidoLista) => costoPedido(p), ancho: 18 }] : []),
+    { header: 'Vendedor', valor: (p) => p.vendedor?.nombre ?? '', ancho: 22 },
+    { header: 'Fecha de envio', valor: (p) => (p.shipping_date ? formatFecha(p.shipping_date) : ''), ancho: 14 },
+    { header: 'Observacion', valor: (p) => p.observation ?? '', ancho: 40 },
+  ]
+
+  // Totales de la lista: no suman los cancelados (igual que el pie de la tabla)
+  const unidadesListadas = vigentesListados.reduce((s, p) => s + unidadesPedido(p), 0)
+  const pieExport = (columnas: Columna<PedidoLista>[], formatear: boolean): (string | number)[] =>
+    columnas.map((c, i) => {
+      if (i === 0) return 'TOTAL (sin cancelados)'
+      if (c.header === 'Unid.' || c.header === 'Unidades') return unidadesListadas
+      if (c.header === 'Total' || c.header === 'Total (Gs)') return formatear ? formatGsPdf(totalListado) : Math.round(totalListado)
+      if (c.header.startsWith('Costo')) return formatear ? formatUsd(costoListado) : costoListado
+      return ''
+    })
+
   const columnas: ColumnaTabla<PedidoLista>[] = [
     { id: 'num', header: 'N° Pedido', render: (p) => <span className="font-medium">{p.order_number}</span>, orden: (p) => p.order_number },
     { id: 'fecha', header: 'Fecha', render: (p) => formatFecha(p.created_at), orden: (p) => p.created_at },
@@ -145,11 +198,47 @@ export default function Pedidos() {
         titulo="Pedidos"
         descripcion={esAdmin ? 'Todos los pedidos.' : 'Tus pedidos.'}
         acciones={
-          can('can_create_orders') && (
-            <Button onClick={() => setModal({ id: null })}>
-              <Plus /> Nuevo
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={filas.length === 0}
+              onClick={() =>
+                exportarPDF({
+                  titulo: `Pedidos · ${subtituloExport()}`,
+                  columnas: columnasPdf,
+                  filas,
+                  pie: pieExport(columnasPdf, true),
+                  archivo: `pedidos-${hoyISO()}.pdf`,
+                })
+              }
+            >
+              <FileDown /> PDF
             </Button>
-          )
+            {can('can_export_excel') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={filas.length === 0}
+                onClick={() =>
+                  exportarExcel({
+                    hoja: 'Pedidos',
+                    columnas: columnasExcel,
+                    filas,
+                    pie: pieExport(columnasExcel, false),
+                    archivo: `pedidos-${hoyISO()}.xlsx`,
+                  })
+                }
+              >
+                <FileSpreadsheet /> Excel
+              </Button>
+            )}
+            {can('can_create_orders') && (
+              <Button onClick={() => setModal({ id: null })}>
+                <Plus /> Nuevo
+              </Button>
+            )}
+          </>
         }
       />
 

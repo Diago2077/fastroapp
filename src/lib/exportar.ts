@@ -16,6 +16,8 @@ export async function exportarPDF<T>(opts: {
   columnas: Columna<T>[]
   filas: T[]
   archivo: string
+  /** Fila de totales al final (un valor por columna). */
+  pie?: (string | number)[]
 }) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const doc = new jsPDF({ orientation: opts.columnas.length > 6 ? 'landscape' : 'portrait' })
@@ -36,6 +38,9 @@ export async function exportarPDF<T>(opts: {
     startY: 27,
     head: [opts.columnas.map((c) => c.header)],
     body: opts.filas.map((f) => opts.columnas.map((c) => c.valor(f))),
+    foot: opts.pie ? [opts.pie] : undefined,
+    footStyles: { fillColor: [235, 235, 238], textColor: 20, fontStyle: 'bold', fontSize: 8 },
+    showFoot: 'lastPage',
     headStyles: { fillColor: [155, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 9 },
     bodyStyles: { fontSize: 8 },
     alternateRowStyles: { fillColor: [248, 248, 250] },
@@ -51,11 +56,14 @@ export async function exportarExcel<T>(opts: {
   columnas: Columna<T>[]
   filas: T[]
   archivo: string
+  /** Fila de totales al final (un valor por columna). */
+  pie?: (string | number)[]
 }) {
   const XLSX = await import('xlsx')
   const datos = [
     opts.columnas.map((c) => c.header),
     ...opts.filas.map((f) => opts.columnas.map((c) => c.valor(f))),
+    ...(opts.pie ? [opts.pie] : []),
   ]
   const ws = XLSX.utils.aoa_to_sheet(datos)
   ws['!cols'] = opts.columnas.map((c) => ({ wch: Math.max(c.header.length + 4, c.ancho ?? 15) }))
