@@ -1,4 +1,4 @@
-import { Ban, FileDown, FileSpreadsheet, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { Ban, FileDown, FileSpreadsheet, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CambioEstadoModal, type CambioEstado } from '@/components/pedidos/CambioEstadoModal'
@@ -15,7 +15,7 @@ import { claveLocal } from '@/lib/app'
 import { getConfig } from '@/lib/config'
 import { ESTADO_LABEL, type EstadoPedido, type Pedido } from '@/lib/database.types'
 import { mensajeError } from '@/lib/db'
-import { formatFecha, formatGs, formatUsd, totalesPedido } from '@/lib/format'
+import { formatFecha, formatGs, formatUsd, normalizar, totalesPedido } from '@/lib/format'
 import {
   cambioSoloAdmin,
   exportarPedidoExcel,
@@ -94,6 +94,7 @@ export function PedidoModal({
   const [form, setForm] = useState<Formulario>(FORM_VACIO)
   const [original, setOriginal] = useState('')
   const [pedido, setPedido] = useState<Pedido | null>(null)
+  const [filtroItems, setFiltroItems] = useState('')
   const [selector, setSelector] = useState(false)
   /** Variante de la fila tocada: abre el selector directo en ese producto. */
   const [variantEditar, setVariantEditar] = useState<string | null>(null)
@@ -176,6 +177,7 @@ export function PedidoModal({
       }
       setForm(inicial)
       setOriginal(JSON.stringify(inicial))
+      setFiltroItems('')
       setCargando(false)
     })()
 
@@ -231,6 +233,12 @@ export function PedidoModal({
     }
     return [...grupos.values()]
   }, [form.items])
+
+  const filasVisibles = useMemo(() => {
+    const q = normalizar(filtroItems)
+    if (!q) return filasColor
+    return filasColor.filter((f) => normalizar(`${f.code} ${f.description} ${f.color}`).includes(q))
+  }, [filasColor, filtroItems])
 
   function cambiarProveedor(id: string) {
     if (form.items.length > 0 && id !== form.providerId) {
@@ -474,12 +482,23 @@ export function PedidoModal({
               {!form.providerId && !bloqueado && (
                 <p className="mb-2 text-xs text-muted-foreground">Elegi primero el proveedor para buscar sus productos.</p>
               )}
+              {form.items.length > 0 && (
+                <div className="relative mb-2">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Buscar en el pedido por codigo, descripcion o color…"
+                    value={filtroItems}
+                    onChange={(e) => setFiltroItems(e.target.value)}
+                  />
+                </div>
+              )}
               {form.items.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
                   Todavia no hay productos en el pedido.
                 </div>
               ) : (
-                <div className="max-h-72 overflow-auto rounded-md border border-border">
+                <div className="max-h-[13.7rem] overflow-auto rounded-md border border-border">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-card">
                       <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -490,7 +509,14 @@ export function PedidoModal({
                       </tr>
                     </thead>
                     <tbody>
-                      {filasColor.map((f) => (
+                      {filasVisibles.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                            Ningun producto del pedido coincide con la busqueda.
+                          </td>
+                        </tr>
+                      )}
+                      {filasVisibles.map((f) => (
                         <tr
                           key={`${f.code}-${f.color}`}
                           onClick={bloqueado ? undefined : () => setVariantEditar(f.variantId)}
