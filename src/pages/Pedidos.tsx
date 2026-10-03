@@ -120,6 +120,7 @@ export default function Pedidos() {
     if (vendedores.length) partes.push(`Vendedor: ${vendedores.map((id) => opciones.vendedores.find((o) => o.value === id)?.label ?? id).join(', ')}`)
     if (temporadas.length) partes.push(`Temporada: ${temporadas.join(', ')}`)
     if (proveedores.length) partes.push(`Proveedor: ${proveedores.join(', ')}`)
+    if (vigentesListados.length !== filas.length) partes.push('los cancelados no suman en el total')
     return partes.join(' · ')
   }
 
@@ -155,7 +156,7 @@ export default function Pedidos() {
   const unidadesListadas = vigentesListados.reduce((s, p) => s + unidadesPedido(p), 0)
   const pieExport = (columnas: Columna<PedidoLista>[], formatear: boolean): (string | number)[] =>
     columnas.map((c, i) => {
-      if (i === 0) return 'TOTAL (sin cancelados)'
+      if (i === 0) return formatear ? 'TOTAL' : 'TOTAL (sin cancelados)'
       if (c.header === 'Unid.' || c.header === 'Unidades') return unidadesListadas
       if (c.header === 'Total' || c.header === 'Total (Gs)') return formatear ? formatGsPdf(totalListado) : Math.round(totalListado)
       if (c.header.startsWith('Costo')) return formatear ? formatUsd(costoListado) : costoListado
