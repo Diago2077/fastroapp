@@ -210,15 +210,16 @@ export default function Dashboard() {
   )
 }
 
+/** En celular el icono va arriba y centrado (deja todo el ancho a la cifra); desde sm, a la izquierda. */
 function Indicador({ etiqueta, valor, icono }: { etiqueta: string; valor: string; icono: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-xs sm:p-4">
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-3 text-center shadow-xs sm:flex-row sm:gap-3 sm:p-4 sm:text-left">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
         {icono}
       </span>
-      <div className="min-w-0">
-        <p className="tabular truncate text-base font-semibold text-foreground sm:text-lg">{valor}</p>
-        <p className="truncate text-xs text-muted-foreground">{etiqueta}</p>
+      <div className="min-w-0 max-w-full">
+        <p className="tabular text-base font-semibold text-foreground sm:truncate sm:text-lg">{valor}</p>
+        <p className="text-xs text-muted-foreground sm:truncate">{etiqueta}</p>
       </div>
     </div>
   )
