@@ -224,12 +224,23 @@ export function PedidoModal({
 
   // Una fila por producto y color: el subtotal junta todas las tallas
   const filasColor = useMemo(() => {
-    const grupos = new Map<string, { variantId: string; code: string; description: string; color: string; subtotal: number }>()
+    const grupos = new Map<string, { variantId: string; code: string; description: string; color: string; unidades: number; subtotal: number }>()
     for (const i of form.items) {
       const clave = `${i.code} ${i.color}`
       const g = grupos.get(clave)
-      if (g) g.subtotal += i.qty * i.price
-      else grupos.set(clave, { variantId: i.variantId, code: i.code, description: i.description, color: i.color, subtotal: i.qty * i.price })
+      if (g) {
+        g.unidades += i.qty
+        g.subtotal += i.qty * i.price
+      } else {
+        grupos.set(clave, {
+          variantId: i.variantId,
+          code: i.code,
+          description: i.description,
+          color: i.color,
+          unidades: i.qty,
+          subtotal: i.qty * i.price,
+        })
+      }
     }
     return [...grupos.values()]
   }, [form.items])
@@ -483,7 +494,7 @@ export function PedidoModal({
                   </div>
                 )}
                 <p className="whitespace-nowrap text-xs font-medium text-muted-foreground">
-                  Productos · {form.items.length} items · {unidades} u.
+                  Productos · {filasColor.length} items · {unidades} u.
                 </p>
                 {!bloqueado && (
                   <Button size="sm" className="ml-auto" disabled={!form.providerId} onClick={() => setSelector(true)}>
@@ -506,13 +517,14 @@ export function PedidoModal({
                         <th className="px-3 py-2 font-medium">Codigo</th>
                         <th className="px-3 py-2 font-medium">Descripcion</th>
                         <th className="px-3 py-2 font-medium">Color</th>
+                        <th className="px-3 py-2 text-center font-medium">Cant.</th>
                         <th className="px-3 py-2 text-right font-medium">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filasVisibles.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                          <td colSpan={5} className="px-3 py-4 text-center text-sm text-muted-foreground">
                             Ningun producto del pedido coincide con la busqueda.
                           </td>
                         </tr>
@@ -530,6 +542,7 @@ export function PedidoModal({
                           <td className="px-3 py-2 font-medium">{f.code}</td>
                           <td className="px-3 py-2">{f.description}</td>
                           <td className="px-3 py-2">{f.color}</td>
+                          <td className="px-3 py-2 text-center tabular">{f.unidades}</td>
                           <td className="px-3 py-2 text-right tabular">{formatGs(f.subtotal)}</td>
                         </tr>
                       ))}
