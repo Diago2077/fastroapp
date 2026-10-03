@@ -112,7 +112,7 @@ export function Tabla<T>({
                 <td
                   key={c.id}
                   className={cn(
-                    'px-4 py-2.5',
+                    'whitespace-nowrap px-4 py-2.5',
                     c.align === 'right' && 'text-right tabular',
                     c.align === 'center' && 'text-center',
                     c.className,

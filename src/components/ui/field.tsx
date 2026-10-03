@@ -33,7 +33,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
 }
 
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(control, 'h-9.5 pr-8', className)} {...props} />
+  return <select className={cn(control, 'h-9.5 pr-2', className)} {...props} />
 }
 
 /** Label + control + mensaje de ayuda o advertencia. */

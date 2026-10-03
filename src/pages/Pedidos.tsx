@@ -139,7 +139,7 @@ export default function Pedidos() {
         acciones={
           can('can_create_orders') && (
             <Button onClick={() => setModal({ id: null })}>
-              <Plus /> Nuevo pedido
+              <Plus /> Nuevo
             </Button>
           )
         }
