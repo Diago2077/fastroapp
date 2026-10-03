@@ -469,29 +469,29 @@ export function PedidoModal({
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="whitespace-nowrap text-xs font-medium text-muted-foreground">
                   Productos · {form.items.length} items · {unidades} u.
                 </p>
+                {form.items.length > 0 && (
+                  <div className="relative min-w-[14rem] flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-9"
+                      placeholder="Buscar por codigo, descripcion o color…"
+                      value={filtroItems}
+                      onChange={(e) => setFiltroItems(e.target.value)}
+                    />
+                  </div>
+                )}
                 {!bloqueado && (
-                  <Button size="sm" disabled={!form.providerId} onClick={() => setSelector(true)}>
+                  <Button size="sm" className="ml-auto" disabled={!form.providerId} onClick={() => setSelector(true)}>
                     <Plus /> Agregar productos
                   </Button>
                 )}
               </div>
               {!form.providerId && !bloqueado && (
                 <p className="mb-2 text-xs text-muted-foreground">Elegi primero el proveedor para buscar sus productos.</p>
-              )}
-              {form.items.length > 0 && (
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Buscar en el pedido por codigo, descripcion o color…"
-                    value={filtroItems}
-                    onChange={(e) => setFiltroItems(e.target.value)}
-                  />
-                </div>
               )}
               {form.items.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
