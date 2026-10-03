@@ -1,5 +1,5 @@
 import { ListFilter, Search } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { normalizar } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { OpcionFiltro } from './filtro-multi'
@@ -23,6 +23,28 @@ export function PanelFiltros({
 }) {
   const [abierto, setAbierto] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  /** Corrimiento horizontal para que el panel no se salga de la pantalla (celular). */
+  const [dx, setDx] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!abierto) return
+    const acomodar = () => {
+      const el = panelRef.current
+      if (!el) return
+      const margen = 8
+      const { left, right } = el.getBoundingClientRect()
+      const actual = dx
+      const base = { left: left - actual, right: right - actual }
+      let nuevo = 0
+      if (base.right > window.innerWidth - margen) nuevo = window.innerWidth - margen - base.right
+      if (base.left + nuevo < margen) nuevo = margen - base.left
+      if (nuevo !== actual) setDx(nuevo)
+    }
+    acomodar()
+    window.addEventListener('resize', acomodar)
+    return () => window.removeEventListener('resize', acomodar)
+  }, [abierto, dx])
 
   useEffect(() => {
     if (!abierto) return
@@ -65,7 +87,11 @@ export function PanelFiltros({
       </button>
 
       {abierto && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-card shadow-lg">
+        <div
+          ref={panelRef}
+          style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
+          className="absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-border bg-card shadow-lg"
+        >
           <div className="max-h-[65vh] space-y-4 overflow-y-auto p-4">{children}</div>
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
             <button
