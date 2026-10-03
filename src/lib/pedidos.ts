@@ -137,10 +137,8 @@ export async function exportarPedidoPDF(id: string) {
   const datos: [string, string][] = [
     ['Cliente', p.clients ? `${p.clients.code ?? ''} — ${p.clients.name}${p.clients.store_name ? ` (${p.clients.store_name})` : ''}` : '—'],
     ['RUC', p.clients?.ruc ?? '—'],
-    ['Telefono', p.clients?.phone ?? '—'],
     ['Vendedor', p.vendedor?.nombre ?? '—'],
     ['Temporada', p.season ?? '—'],
-    ['Envio', formatFecha(p.shipping_date)],
   ]
   let y = 34
   for (const [k, v] of datos) {
