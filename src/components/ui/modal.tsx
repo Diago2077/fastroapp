@@ -11,6 +11,7 @@ let modalesAbiertos = 0
 export function Modal({
   abierto,
   titulo,
+  tituloExtra,
   descripcion,
   onCerrar,
   children,
@@ -19,6 +20,8 @@ export function Modal({
 }: {
   abierto: boolean
   titulo: string
+  /** Se muestra al lado del titulo (estado, fecha, etc.). */
+  tituloExtra?: ReactNode
   descripcion?: string
   onCerrar: () => void
   children: ReactNode
@@ -63,7 +66,10 @@ export function Modal({
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">{titulo}</h2>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="text-sm font-semibold text-foreground">{titulo}</h2>
+              {tituloExtra}
+            </div>
             {descripcion && (
               <p className="mt-0.5 text-xs text-muted-foreground">{descripcion}</p>
             )}

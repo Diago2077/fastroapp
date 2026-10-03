@@ -338,7 +338,16 @@ export function PedidoModal({
     <>
       <Modal
         abierto={abierto}
-        titulo={nuevo ? 'Nuevo pedido' : `Pedido ${pedido?.order_number ?? ''}`}
+        titulo={nuevo ? 'Nuevo pedido' : (pedido?.order_number ?? '')}
+        tituloExtra={
+          pedido && (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
+              <Badge tono={TONO_ESTADO[estado]}>{ESTADO_LABEL[estado]}</Badge>
+              <span>Creado {formatFecha(pedido.created_at)}</span>
+              {pedido.shipping_date && <span>Enviado {formatFecha(pedido.shipping_date)}</span>}
+            </span>
+          )
+        }
         onCerrar={() => {
           // Con un dialogo encima, Escape es de ese dialogo
           if (selector || variantEditar || cambio || confirmarSalir || confirmarBorrar) return
@@ -430,14 +439,6 @@ export function PedidoModal({
               </div>
             )}
 
-            {pedido && (
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <Badge tono={TONO_ESTADO[estado]}>{ESTADO_LABEL[estado]}</Badge>
-                <span>Creado {formatFecha(pedido.created_at)}</span>
-                {pedido.shipping_date && <span>Enviado {formatFecha(pedido.shipping_date)}</span>}
-              </div>
-            )}
-
             <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]">
               <Field label="Cliente *">
                 {bloqueado ? (
@@ -470,9 +471,6 @@ export function PedidoModal({
 
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="whitespace-nowrap text-xs font-medium text-muted-foreground">
-                  Productos · {form.items.length} items · {unidades} u.
-                </p>
                 {form.items.length > 0 && (
                   <div className="relative min-w-[14rem] flex-1">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -484,6 +482,9 @@ export function PedidoModal({
                     />
                   </div>
                 )}
+                <p className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+                  Productos · {form.items.length} items · {unidades} u.
+                </p>
                 {!bloqueado && (
                   <Button size="sm" className="ml-auto" disabled={!form.providerId} onClick={() => setSelector(true)}>
                     <Plus /> Agregar productos
