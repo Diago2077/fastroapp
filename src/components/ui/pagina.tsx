@@ -27,20 +27,24 @@ export function Buscador({
   valor,
   onChange,
   placeholder,
+  accion,
 }: {
   valor: string
   onChange: (v: string) => void
   placeholder: string
+  /** Control a la derecha, dentro del campo (p. ej. el icono de filtros). */
+  accion?: ReactNode
 }) {
   return (
     <div className="relative w-full max-w-xs">
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        className="h-9 pl-9"
+        className={accion ? 'h-9 pl-9 pr-11' : 'h-9 pl-9'}
         placeholder={placeholder}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
       />
+      {accion && <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{accion}</div>}
     </div>
   )
 }

@@ -6,9 +6,8 @@ import { PedidoModal } from '@/components/pedidos/PedidoModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { Select } from '@/components/ui/field'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
-import { ListaFiltro, PanelFiltros, RangoFechas } from '@/components/ui/panel-filtros'
+import { ListaFiltro, OpcionUnica, PanelFiltros, RangoFechas } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { ESTADO_LABEL, type EstadoPedido } from '@/lib/database.types'
@@ -109,7 +108,9 @@ export default function Pedidos() {
 
   // Cantidad de filtros del panel con algo elegido
   const filtrosActivos =
-    [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length + (desde || hasta ? 1 : 0)
+    (estado !== 'open' ? 1 : 0) +
+    [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length +
+    (desde || hasta ? 1 : 0)
 
   // ── Exportar lo que muestra la lista (con los filtros aplicados) ──
   // El costo de fabrica solo sale con can_see_cost, igual que en la tabla.
@@ -163,6 +164,24 @@ export default function Pedidos() {
       return ''
     })
 
+  const exportarListaPdf = () =>
+    exportarPDF({
+      titulo: `Pedidos · ${subtituloExport()}`,
+      columnas: columnasPdf,
+      filas,
+      pie: pieExport(columnasPdf, true),
+      archivo: `pedidos-${hoyISO()}.pdf`,
+    })
+
+  const exportarListaExcel = () =>
+    exportarExcel({
+      hoja: 'Pedidos',
+      columnas: columnasExcel,
+      filas,
+      pie: pieExport(columnasExcel, false),
+      archivo: `pedidos-${hoyISO()}.xlsx`,
+    })
+
   const columnas: ColumnaTabla<PedidoLista>[] = [
     { id: 'num', header: 'N° Pedido', render: (p) => <span className="font-medium">{p.order_number}</span>, orden: (p) => p.order_number },
     { id: 'fecha', header: 'Fecha', render: (p) => formatFecha(p.created_at), orden: (p) => p.created_at },
@@ -200,40 +219,6 @@ export default function Pedidos() {
         descripcion={esAdmin ? 'Todos los pedidos.' : 'Tus pedidos.'}
         acciones={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={filas.length === 0}
-              onClick={() =>
-                exportarPDF({
-                  titulo: `Pedidos · ${subtituloExport()}`,
-                  columnas: columnasPdf,
-                  filas,
-                  pie: pieExport(columnasPdf, true),
-                  archivo: `pedidos-${hoyISO()}.pdf`,
-                })
-              }
-            >
-              <FileDown /> PDF
-            </Button>
-            {can('can_export_excel') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={filas.length === 0}
-                onClick={() =>
-                  exportarExcel({
-                    hoja: 'Pedidos',
-                    columnas: columnasExcel,
-                    filas,
-                    pie: pieExport(columnasExcel, false),
-                    archivo: `pedidos-${hoyISO()}.xlsx`,
-                  })
-                }
-              >
-                <FileSpreadsheet /> Excel
-              </Button>
-            )}
             {can('can_create_orders') && (
               <Button onClick={() => setModal({ id: null })}>
                 <Plus /> Nuevo
@@ -244,29 +229,57 @@ export default function Pedidos() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por N° de pedido o cliente…" />
-        <Select className="h-9 w-auto" value={estado} onChange={(e) => setEstado(e.target.value as FiltroEstado)}>
-          <option value="open">Abiertos</option>
-          <option value="sent">Enviados</option>
-          <option value="closed">Cerrados</option>
-          <option value="cancelled">Cancelados</option>
-          <option value="">Todos</option>
-        </Select>
-        <PanelFiltros
-          activos={filtrosActivos}
-          onLimpiar={() => {
-            setVendedores([])
-            setTemporadas([])
-            setProveedores([])
-            setDesde('')
-            setHasta('')
-          }}
-        >
-          <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
-          {esAdmin && <ListaFiltro label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
-          <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
-          <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
-        </PanelFiltros>
+        <Buscador
+          valor={busqueda}
+          onChange={setBusqueda}
+          placeholder="Buscar por N° de pedido o cliente…"
+          accion={
+            <PanelFiltros
+              soloIcono
+              activos={filtrosActivos}
+              onLimpiar={() => {
+                setEstado('open')
+                setVendedores([])
+                setTemporadas([])
+                setProveedores([])
+                setDesde('')
+                setHasta('')
+              }}
+              acciones={
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Exportar lo que se ve</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={filas.length === 0} onClick={exportarListaPdf}>
+                      <FileDown /> PDF
+                    </Button>
+                    {can('can_export_excel') && (
+                      <Button variant="outline" size="sm" disabled={filas.length === 0} onClick={exportarListaExcel}>
+                        <FileSpreadsheet /> Excel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              }
+            >
+              <OpcionUnica
+                label="Estado"
+                valor={estado}
+                onChange={setEstado}
+                opciones={[
+                  { value: 'open', label: 'Abiertos' },
+                  { value: 'sent', label: 'Enviados' },
+                  { value: 'closed', label: 'Cerrados' },
+                  { value: 'cancelled', label: 'Cancelados' },
+                  { value: '', label: 'Todos' },
+                ]}
+              />
+              <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
+              {esAdmin && <ListaFiltro label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
+              <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+              <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
+            </PanelFiltros>
+          }
+        />
       </div>
 
       {cargando ? (

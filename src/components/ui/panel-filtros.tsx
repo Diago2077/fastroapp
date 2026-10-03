@@ -9,17 +9,23 @@ import type { OpcionFiltro } from './filtro-multi'
  * Un solo boton "Filtros" que despliega un panel con todos los filtros.
  * `activos` es la cantidad de filtros distintos del valor por defecto (va como
  * numerito en el boton) y `resumen` un texto corto de lo que se esta viendo.
- * Cierra al tocar afuera y con Escape.
+ * Con `soloIcono` el disparador es un icono chico (para ir dentro del buscador)
+ * y el panel se alinea a su derecha. `acciones` es una fila fija (no scrollea)
+ * debajo de los filtros, p. ej. exportar. Cierra al tocar afuera y con Escape.
  */
 export function PanelFiltros({
   activos,
   resumen,
   onLimpiar,
+  soloIcono = false,
+  acciones,
   children,
 }: {
   activos: number
   resumen?: string
   onLimpiar: () => void
+  soloIcono?: boolean
+  acciones?: ReactNode
   children: ReactNode
 }) {
   const [abierto, setAbierto] = useState(false)
@@ -45,14 +51,15 @@ export function PanelFiltros({
       if (base.right > ancho - margen) nuevo = ancho - margen - base.right
       if (base.left + nuevo < margen) nuevo = margen - base.left
       if (nuevo !== actual) setDx(nuevo)
-      // Pie del panel (~49 px) + barra inferior del celular (56 px) + margen
-      const libre = document.documentElement.clientHeight - el.getBoundingClientRect().top - 49 - 56 - 16
+      // Pie del panel (~49 px) + fila de acciones (~56 px, si hay) + barra inferior del celular (56 px) + margen
+      const libre =
+        document.documentElement.clientHeight - el.getBoundingClientRect().top - 49 - (acciones ? 56 : 0) - 56 - 16
       setAltoMax(Math.max(160, Math.round(libre)))
     }
     acomodar()
     window.addEventListener('resize', acomodar)
     return () => window.removeEventListener('resize', acomodar)
-  }, [abierto, dx])
+  }, [abierto, dx, acciones])
 
   useEffect(() => {
     if (!abierto) return
@@ -74,31 +81,56 @@ export function PanelFiltros({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={abierto}
-        onClick={() => setAbierto((a) => !a)}
-        className={cn(
-          'flex h-9 items-center gap-2 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs hover:bg-accent',
-          activos > 0 && 'border-primary/50',
-        )}
-      >
-        <ListFilter className="size-4 text-muted-foreground" />
-        Filtros
-        {activos > 0 && (
-          <span className="rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
-            {activos}
-          </span>
-        )}
-        {resumen && <span className="hidden text-xs text-muted-foreground sm:inline">· {resumen}</span>}
-      </button>
+      {soloIcono ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={abierto}
+          aria-label="Filtros y opciones"
+          title="Filtros y opciones"
+          onClick={() => setAbierto((a) => !a)}
+          className={cn(
+            'relative flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground',
+            (abierto || activos > 0) && 'text-foreground',
+          )}
+        >
+          <ListFilter className="size-4" />
+          {activos > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+              {activos}
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={abierto}
+          onClick={() => setAbierto((a) => !a)}
+          className={cn(
+            'flex h-9 items-center gap-2 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs hover:bg-accent',
+            activos > 0 && 'border-primary/50',
+          )}
+        >
+          <ListFilter className="size-4 text-muted-foreground" />
+          Filtros
+          {activos > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
+              {activos}
+            </span>
+          )}
+          {resumen && <span className="hidden text-xs text-muted-foreground sm:inline">· {resumen}</span>}
+        </button>
+      )}
 
       {abierto && (
         <div
           ref={panelRef}
           style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
-          className="absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-border bg-card shadow-lg"
+          className={cn(
+            'absolute top-full z-30 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-border bg-card shadow-lg',
+            soloIcono ? 'right-0 mt-3' : 'left-0 mt-2',
+          )}
         >
           <div
             style={altoMax ? { maxHeight: `min(65vh, ${altoMax}px)` } : undefined}
@@ -106,6 +138,7 @@ export function PanelFiltros({
           >
             {children}
           </div>
+          {acciones && <div className="border-t border-border px-4 py-3">{acciones}</div>}
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
             <button
               type="button"
@@ -232,6 +265,43 @@ export function RangoFechas({
           Hasta
           <Input type="date" className="mt-1 h-9" value={hasta} min={desde || undefined} onChange={(e) => onHasta(e.target.value)} />
         </label>
+      </div>
+    </div>
+  )
+}
+
+/** Una sola opcion entre varias (botones tipo pastilla). */
+export function OpcionUnica<T extends string>({
+  label,
+  opciones,
+  valor,
+  onChange,
+}: {
+  label: string
+  opciones: { value: T; label: string }[]
+  valor: T
+  onChange: (valor: T) => void
+}) {
+  return (
+    <div>
+      <Encabezado label={label} />
+      <div className="flex flex-wrap gap-1.5">
+        {opciones.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={valor === o.value}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs transition-colors',
+              valor === o.value
+                ? 'border-primary bg-primary/15 font-medium text-foreground'
+                : 'border-input text-muted-foreground hover:bg-accent',
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
     </div>
   )
