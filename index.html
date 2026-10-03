@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="%MARCA_IDIOMA%">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="%MARCA_DESCRIPCION%" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta name="theme-color" content="%MARCA_COLOR%" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="%MARCA_NOMBRE%" />
+
+    <title>%MARCA_NOMBRE%</title>
+
+    <!--
+      Los %MARCA_*% los reemplaza el plugin `marcaApp` de vite.config.ts con
+      los valores de app.config.json: el nombre de la app no se escribe a
+      mano en ningun lado.
+
+      El script de abajo aplica el tema antes del primer pintado: sin esto,
+      entrar con el tema oscuro muestra un fogonazo blanco mientras carga el
+      bundle. La clave la inyecta el mismo plugin, asi que no se puede
+      desincronizar de la que usa src/lib/tema.ts.
+    -->
+    <script>
+      try {
+        var tema = localStorage.getItem('%MARCA_CLAVE_TEMA%') || 'sistema'
+        var oscuro =
+          tema === 'oscuro' ||
+          (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (oscuro) document.documentElement.classList.add('dark')
+      } catch (e) {
+        /* sin localStorage se usa el tema claro */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

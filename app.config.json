@@ -1,0 +1,8 @@
+{
+  "$comentario": "Identidad de la app. Cambiar esto (mas el 'name' de package.json) rebrandea la app entera: titulo, manifest de la PWA, cabecera, login e iconos. No hay ningun otro archivo que tocar a mano.",
+  "nombre": "FASTRO S.A.",
+  "descripcion": "Sistema de pedidos a fabricas de FASTRO S.A.",
+  "colorPrimario": "#9B0000",
+  "colorFondo": "#f9fafb",
+  "idioma": "es"
+}
