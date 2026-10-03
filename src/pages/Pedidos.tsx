@@ -37,7 +37,7 @@ export default function Pedidos() {
   const [vendedores, setVendedores] = useState<string[]>([])
   const [temporadas, setTemporadas] = useState<string[]>([])
   const [proveedores, setProveedores] = useState<string[]>([])
-  const [modal, setModal] = useState<{ id: string | null } | null>(null)
+  const [modal, setModal] = useState<{ id: string | null; duplicarDe?: string } | null>(null)
   const [cambio, setCambio] = useState<CambioEstado | null>(null)
 
   const cargar = useCallback(async () => {
@@ -184,6 +184,8 @@ export default function Pedidos() {
       <PedidoModal
         abierto={modal !== null}
         pedidoId={modal?.id ?? null}
+        duplicarDe={modal?.duplicarDe ?? null}
+        onDuplicar={(id) => setModal({ id: null, duplicarDe: id })}
         onCerrar={() => setModal(null)}
         onCambio={() => void cargar()}
       />

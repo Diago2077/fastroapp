@@ -1,4 +1,4 @@
-import { Ban, FileDown, FileSpreadsheet, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { Ban, Copy, FileDown, FileSpreadsheet, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CambioEstadoModal, type CambioEstado } from '@/components/pedidos/CambioEstadoModal'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import { ErrorBox } from '@/components/ui/estado'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
+import { MenuAcciones, type ItemMenu } from '@/components/ui/menu'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { useAuth } from '@/hooks/useAuth'
 import { usePermisos } from '@/hooks/usePermisos'
@@ -73,11 +74,16 @@ interface PedidoCargado extends Pedido {
 export function PedidoModal({
   abierto,
   pedidoId,
+  duplicarDe = null,
+  onDuplicar,
   onCerrar,
   onCambio,
 }: {
   abierto: boolean
   pedidoId: string | null
+  /** Con pedidoId null: arma un pedido nuevo copiando este (precios vigentes). */
+  duplicarDe?: string | null
+  onDuplicar?: (id: string) => void
   onCerrar: () => void
   /** Algo cambio en la base (guardado, estado, borrado): recargar la lista. */
   onCambio: () => void
@@ -123,13 +129,13 @@ export function PedidoModal({
       const [cli, prov, ped] = await Promise.all([
         supabase.from('clients').select('id, code, name, store_name').eq('active', true).order('name').limit(5000),
         supabase.from('providers').select('id, name').eq('active', true).order('name'),
-        pedidoId
+        pedidoId ?? duplicarDe
           ? supabase
               .from('orders')
               .select(
                 '*, order_items(quantity, unit_sale_price, product_variants(id, color, size, products(code, description)), order_item_costs(unit_cost_price))',
               )
-              .eq('id', pedidoId)
+              .eq('id', (pedidoId ?? duplicarDe) as string)
               .single()
           : Promise.resolve(null),
       ])
@@ -145,7 +151,7 @@ export function PedidoModal({
           return
         }
         const p = ped.data as PedidoCargado
-        setPedido(p)
+        if (!duplicarDe) setPedido(p)
         inicial = {
           clientId: p.client_id ?? '',
           providerId: p.provider_id ?? '',
@@ -167,6 +173,47 @@ export function PedidoModal({
                 : (i.order_item_costs?.unit_cost_price ?? null),
             })),
         }
+        if (duplicarDe) {
+          // Copia: precios y costos vigentes del catalogo, temporada actual
+          const ids = inicial.items.map((i) => i.variantId)
+          const vigentes = new Map<string, { price: number; cost: number | null }>()
+          for (let k = 0; k < ids.length; k += 150) {
+            const { data, error: errV } = await supabase
+              .from('product_variants')
+              .select('id, sale_price, products(active), product_variant_costs(cost_price)')
+              .in('id', ids.slice(k, k + 150))
+            if (errV) {
+              setError('No se pudo traer los precios vigentes para duplicar.')
+              setCargando(false)
+              return
+            }
+            for (const v of (data ?? []) as unknown as {
+              id: string
+              sale_price: number
+              products: { active: boolean } | { active: boolean }[] | null
+              product_variant_costs: { cost_price: number } | { cost_price: number }[] | null
+            }[]) {
+              const prod = Array.isArray(v.products) ? v.products[0] : v.products
+              if (prod && !prod.active) continue
+              const c = Array.isArray(v.product_variant_costs) ? v.product_variant_costs[0] : v.product_variant_costs
+              vigentes.set(v.id, { price: v.sale_price, cost: c?.cost_price ?? null })
+            }
+          }
+          const conPrecio = inicial.items.filter((i) => vigentes.has(i.variantId))
+          const omitidas = inicial.items.length - conPrecio.length
+          if (omitidas > 0) toast.warning(`${omitidas} variante${omitidas === 1 ? '' : 's'} ya no existe${omitidas === 1 ? '' : 'n'} en el catalogo y no se copiaron.`)
+          const obs = (p.observation ?? '').trim()
+          inicial = {
+            ...inicial,
+            season: FORM_VACIO().season,
+            observation: `Copia de ${p.order_number}${obs ? ` · ${obs}` : ''}`,
+            items: conPrecio.map((i) => ({
+              ...i,
+              price: vigentes.get(i.variantId)!.price,
+              cost: vigentes.get(i.variantId)!.cost,
+            })),
+          }
+        }
       } else {
         try {
           const guardado = localStorage.getItem(claveBorrador)
@@ -176,7 +223,8 @@ export function PedidoModal({
         }
       }
       setForm(inicial)
-      setOriginal(JSON.stringify(inicial))
+      // Una copia arranca "sucia": cerrarla sin guardar pide confirmacion
+      setOriginal(JSON.stringify(duplicarDe ? FORM_VACIO() : inicial))
       setFiltroItems('')
       setCargando(false)
     })()
@@ -184,11 +232,11 @@ export function PedidoModal({
     return () => {
       vivo = false
     }
-  }, [abierto, pedidoId, claveBorrador])
+  }, [abierto, pedidoId, duplicarDe, claveBorrador])
 
   // ── Borrador autoguardado (solo pedidos nuevos) ────────────
   useEffect(() => {
-    if (!abierto || !nuevo || cargando || borrador) return
+    if (!abierto || !nuevo || duplicarDe || cargando || borrador) return
     const t = setTimeout(() => {
       try {
         if (sucio) localStorage.setItem(claveBorrador, JSON.stringify(form))
@@ -198,7 +246,7 @@ export function PedidoModal({
       }
     }, 600)
     return () => clearTimeout(t)
-  }, [form, sucio, abierto, nuevo, cargando, borrador, claveBorrador])
+  }, [form, sucio, abierto, nuevo, duplicarDe, cargando, borrador, claveBorrador])
 
   // Aviso del navegador si cierra la pestana con cambios sin guardar
   useEffect(() => {
@@ -340,6 +388,49 @@ export function PedidoModal({
     setCambio({ id: pedido.id, numero: pedido.order_number, actual: pedido.status, siguiente })
   }
 
+  function pedirDuplicar() {
+    if (!pedido) return
+    if (sucio && puedeGuardar) return toast.warning('Guarda los cambios del pedido antes de duplicarlo.')
+    onDuplicar?.(pedido.id)
+  }
+
+  const itemsAcciones: ItemMenu[] = nuevo
+    ? []
+    : [
+        { etiqueta: 'PDF', icono: <FileDown />, onClick: () => exportar('pdf') },
+        ...(can('can_export_excel')
+          ? [{ etiqueta: 'Excel', icono: <FileSpreadsheet />, onClick: () => exportar('excel') }]
+          : []),
+        ...(can('can_create_orders') && onDuplicar
+          ? [{ etiqueta: 'Duplicar', icono: <Copy />, onClick: pedirDuplicar }]
+          : []),
+        ...(esAdmin && estado !== 'cancelled'
+          ? [
+              {
+                etiqueta: 'Cancelar pedido',
+                icono: <Ban />,
+                onClick: () => pedirCambioEstado('cancelled'),
+                peligro: true,
+                separador: true,
+              },
+            ]
+          : []),
+        ...(esAdmin && estado === 'cancelled'
+          ? [{ etiqueta: 'Reactivar', icono: <RotateCcw />, onClick: () => pedirCambioEstado('open'), separador: true }]
+          : []),
+        ...(can('can_delete_orders')
+          ? [
+              {
+                etiqueta: 'Eliminar',
+                icono: <Trash2 />,
+                onClick: () => setConfirmarBorrar(true),
+                peligro: true,
+                separador: !esAdmin,
+              },
+            ]
+          : []),
+      ]
+
   const opcionesCliente = clientes.map((c) => ({
     value: c.id,
     label: `${c.code ?? '—'} — ${c.name}${c.store_name ? ` (${c.store_name})` : ''}`,
@@ -349,7 +440,7 @@ export function PedidoModal({
     <>
       <Modal
         abierto={abierto}
-        titulo={nuevo ? 'Nuevo pedido' : (pedido?.order_number ?? '')}
+        titulo={nuevo ? (duplicarDe ? 'Nuevo pedido (copia)' : 'Nuevo pedido') : (pedido?.order_number ?? '')}
         tituloExtra={
           pedido && (
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
@@ -367,31 +458,7 @@ export function PedidoModal({
         ancho="max-w-5xl"
         footer={
           <div className="flex w-full flex-wrap items-center gap-2">
-            {!nuevo && can('can_delete_orders') && (
-              <Button variant="outline" size="icon" title="Eliminar" onClick={() => setConfirmarBorrar(true)}>
-                <Trash2 className="text-destructive" />
-              </Button>
-            )}
-            {!nuevo && esAdmin && estado !== 'cancelled' && (
-              <Button variant="outline" onClick={() => pedirCambioEstado('cancelled')}>
-                <Ban className="text-destructive" /> Cancelar pedido
-              </Button>
-            )}
-            {!nuevo && esAdmin && estado === 'cancelled' && (
-              <Button variant="outline" onClick={() => pedirCambioEstado('open')}>
-                <RotateCcw /> Reactivar
-              </Button>
-            )}
-            {!nuevo && (
-              <Button variant="outline" onClick={() => exportar('pdf')}>
-                <FileDown /> PDF
-              </Button>
-            )}
-            {!nuevo && can('can_export_excel') && (
-              <Button variant="outline" onClick={() => exportar('excel')}>
-                <FileSpreadsheet /> Excel
-              </Button>
-            )}
+            <MenuAcciones etiqueta="Acciones" items={itemsAcciones} />
             {!nuevo && estado !== 'cancelled' && (
               <Button variant="outline" onClick={() => pedirCambioEstado(SIGUIENTE_ESTADO[estado])}>
                 Estado: {ESTADO_LABEL[estado]} → {ESTADO_LABEL[SIGUIENTE_ESTADO[estado]]}
