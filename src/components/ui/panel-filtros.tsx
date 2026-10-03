@@ -38,7 +38,9 @@ export function PanelFiltros({
       const actual = dx
       const base = { left: left - actual, right: right - actual }
       let nuevo = 0
-      if (base.right > window.innerWidth - margen) nuevo = window.innerWidth - margen - base.right
+      // clientWidth y no innerWidth: en celular el panel desbordado ensancha la ventana y innerWidth deja de servir
+      const ancho = document.documentElement.clientWidth
+      if (base.right > ancho - margen) nuevo = ancho - margen - base.right
       if (base.left + nuevo < margen) nuevo = margen - base.left
       if (nuevo !== actual) setDx(nuevo)
     }
