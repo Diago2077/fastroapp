@@ -2,6 +2,7 @@ import { ListFilter, Search } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { normalizar } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { Input } from './field'
 import type { OpcionFiltro } from './filtro-multi'
 
 /**
@@ -180,6 +181,45 @@ export function ListaFiltro({
             ))
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** Rango de fechas (desde / hasta, ambos inclusivos y opcionales). */
+export function RangoFechas({
+  label,
+  desde,
+  hasta,
+  onDesde,
+  onHasta,
+}: {
+  label: string
+  desde: string
+  hasta: string
+  onDesde: (v: string) => void
+  onHasta: (v: string) => void
+}) {
+  const hayRango = Boolean(desde || hasta)
+  return (
+    <div>
+      <Encabezado
+        label={label}
+        cantidad={hayRango ? 1 : 0}
+        onLimpiar={() => {
+          onDesde('')
+          onHasta('')
+        }}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-[11px] text-muted-foreground">
+          Desde
+          <Input type="date" className="mt-1 h-9" value={desde} max={hasta || undefined} onChange={(e) => onDesde(e.target.value)} />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          Hasta
+          <Input type="date" className="mt-1 h-9" value={hasta} min={desde || undefined} onChange={(e) => onHasta(e.target.value)} />
+        </label>
       </div>
     </div>
   )

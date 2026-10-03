@@ -22,6 +22,12 @@ export function formatFechaHora(iso: string | null | undefined): string {
   return `${formatFecha(iso)} ${String(f.getHours()).padStart(2, '0')}:${String(f.getMinutes()).padStart(2, '0')}`
 }
 
+/** Fecha de un timestamp ISO como 'YYYY-MM-DD' en hora local (para comparar con un <input type="date">). */
+export function fechaLocalISO(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /** Fecha de hoy como 'YYYY-MM-DD' en hora local (no UTC). */
 export function hoyISO(): string {
   const d = new Date()

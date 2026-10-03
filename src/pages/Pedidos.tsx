@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { Select } from '@/components/ui/field'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
-import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
+import { ListaFiltro, PanelFiltros, RangoFechas } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { ESTADO_LABEL, type EstadoPedido } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
-import { formatFecha, formatGs, formatUsd, normalizar } from '@/lib/format'
+import { fechaLocalISO, formatFecha, formatGs, formatUsd, normalizar } from '@/lib/format'
 import {
   cambioSoloAdmin,
   costoPedido,
@@ -37,6 +37,8 @@ export default function Pedidos() {
   const [vendedores, setVendedores] = useState<string[]>([])
   const [temporadas, setTemporadas] = useState<string[]>([])
   const [proveedores, setProveedores] = useState<string[]>([])
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
   const [modal, setModal] = useState<{ id: string | null; duplicarDe?: string } | null>(null)
   const [cambio, setCambio] = useState<CambioEstado | null>(null)
 
@@ -81,9 +83,14 @@ export default function Pedidos() {
       if (vendedores.length && !vendedores.includes(p.vendedor?.id ?? '')) return false
       if (temporadas.length && !temporadas.includes(p.season ?? '')) return false
       if (proveedores.length && !proveedores.includes(p.providers?.name ?? '')) return false
+      if (desde || hasta) {
+        const creado = fechaLocalISO(p.created_at)
+        if (desde && creado < desde) return false
+        if (hasta && creado > hasta) return false
+      }
       return !q || normalizar(p.order_number).includes(q) || normalizar(p.clients?.name ?? '').includes(q)
     })
-  }, [pedidos, busqueda, estado, vendedores, temporadas, proveedores])
+  }, [pedidos, busqueda, estado, vendedores, temporadas, proveedores, desde, hasta])
 
   // Los cancelados se listan pero no suman (igual que en dashboard y reportes)
   const vigentesListados = useMemo(() => filas.filter((p) => p.status !== 'cancelled'), [filas])
@@ -99,7 +106,8 @@ export default function Pedidos() {
   }
 
   // Cantidad de filtros del panel con algo elegido
-  const filtrosActivos = [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length
+  const filtrosActivos =
+    [vendedores, temporadas, proveedores].filter((v) => v.length > 0).length + (desde || hasta ? 1 : 0)
 
   const columnas: ColumnaTabla<PedidoLista>[] = [
     { id: 'num', header: 'N° Pedido', render: (p) => <span className="font-medium">{p.order_number}</span>, orden: (p) => p.order_number },
@@ -160,8 +168,11 @@ export default function Pedidos() {
             setVendedores([])
             setTemporadas([])
             setProveedores([])
+            setDesde('')
+            setHasta('')
           }}
         >
+          <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
           {esAdmin && <ListaFiltro label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
           <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
           <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />

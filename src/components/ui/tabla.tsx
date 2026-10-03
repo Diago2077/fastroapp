@@ -124,7 +124,7 @@ export function Tabla<T>({
             </tr>
           ))}
         </tbody>
-        {pie && <tfoot className="border-t border-border bg-secondary/50 font-medium">{pie}</tfoot>}
+        {pie && <tfoot className="whitespace-nowrap border-t border-border bg-secondary/50 font-medium">{pie}</tfoot>}
       </table>
       {visibles < ordenadas.length && <div ref={centinela} className="h-8" />}
     </div>
