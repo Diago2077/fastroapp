@@ -25,7 +25,8 @@ export function PanelFiltros({
   resumen?: string
   onLimpiar: () => void
   soloIcono?: boolean
-  acciones?: ReactNode
+  /** Fila fija debajo de los filtros. Si es funcion, recibe `cerrar` para cerrar el panel antes de abrir un modal. */
+  acciones?: ReactNode | ((cerrar: () => void) => ReactNode)
   children: ReactNode
 }) {
   const [abierto, setAbierto] = useState(false)
@@ -60,7 +61,7 @@ export function PanelFiltros({
     acomodar()
     window.addEventListener('resize', acomodar)
     return () => window.removeEventListener('resize', acomodar)
-  }, [abierto, dx, acciones])
+  }, [abierto, dx])
 
   useEffect(() => {
     if (!abierto) return
@@ -140,7 +141,11 @@ export function PanelFiltros({
           >
             {children}
           </div>
-          {acciones && <div className="border-t border-border px-4 py-3">{acciones}</div>}
+          {acciones && (
+            <div className="border-t border-border px-4 py-3">
+              {typeof acciones === 'function' ? acciones(() => setAbierto(false)) : acciones}
+            </div>
+          )}
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
             <button
               type="button"

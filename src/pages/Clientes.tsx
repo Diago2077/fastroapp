@@ -4,9 +4,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { Field, Input } from '@/components/ui/field'
-import { FiltroMulti } from '@/components/ui/filtro-multi'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
+import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { mensajeError, traerTodo } from '@/lib/db'
@@ -99,19 +99,6 @@ export default function Clientes() {
         acciones={
           <>
             {can('can_create_clients') && (
-              <Button variant="outline" size="sm" onClick={() => setImportando(true)}>
-                <Upload /> Importar
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => exportar('pdf')}>
-              <FileDown /> PDF
-            </Button>
-            {can('can_export_excel') && (
-              <Button variant="outline" size="sm" onClick={() => exportar('excel')}>
-                <FileSpreadsheet /> Excel
-              </Button>
-            )}
-            {can('can_create_clients') && (
               <Button onClick={() => setEdicion('nuevo')}>
                 <Plus /> Nuevo
               </Button>
@@ -121,8 +108,47 @@ export default function Clientes() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por codigo, nombre, tienda o RUC…" />
-        <FiltroMulti label="Ciudad" opciones={opcionesCiudad} valor={ciudades} onChange={setCiudades} />
+        <Buscador
+          valor={busqueda}
+          onChange={setBusqueda}
+          placeholder="Buscar por codigo, nombre, tienda o RUC…"
+          accion={
+            <PanelFiltros
+              soloIcono
+              activos={ciudades.length > 0 ? 1 : 0}
+              onLimpiar={() => setCiudades([])}
+              acciones={(cerrar) => (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Importar y exportar</p>
+                  <div className="flex flex-wrap gap-2">
+                    {can('can_create_clients') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          cerrar()
+                          setImportando(true)
+                        }}
+                      >
+                        <Upload /> Importar
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" disabled={filtradas.length === 0} onClick={() => exportar('pdf')}>
+                      <FileDown /> PDF
+                    </Button>
+                    {can('can_export_excel') && (
+                      <Button variant="outline" size="sm" disabled={filtradas.length === 0} onClick={() => exportar('excel')}>
+                        <FileSpreadsheet /> Excel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            >
+              <ListaFiltro label="Ciudad" opciones={opcionesCiudad} valor={ciudades} onChange={setCiudades} />
+            </PanelFiltros>
+          }
+        />
       </div>
 
       {cargando ? (

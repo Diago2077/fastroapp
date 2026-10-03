@@ -147,27 +147,6 @@ export default function Productos() {
         acciones={
           <>
             {can('can_create_products') && (
-              <Button variant="outline" size="sm" onClick={() => setImportando(true)}>
-                <Upload /> Importar
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => exportarPDF({ titulo: 'Productos', columnas: COLUMNAS_EXPORT, filas, archivo: 'productos.pdf' })}
-            >
-              <FileDown /> PDF
-            </Button>
-            {can('can_export_excel') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportarExcel({ hoja: 'Productos', columnas: COLUMNAS_EXPORT, filas, archivo: 'productos.xlsx' })}
-              >
-                <FileSpreadsheet /> Excel
-              </Button>
-            )}
-            {can('can_create_products') && (
               <Button onClick={() => setForm({ id: null })}>
                 <Plus /> Nuevo
               </Button>
@@ -177,19 +156,63 @@ export default function Productos() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por codigo o descripcion…" />
-        <PanelFiltros
-          activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length}
-          onLimpiar={() => {
-            setMarcas([])
-            setFiltroProveedores([])
-            setTemporadas([])
-          }}
-        >
-          <ListaFiltro label="Marca" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
-          <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
-          <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
-        </PanelFiltros>
+        <Buscador
+          valor={busqueda}
+          onChange={setBusqueda}
+          placeholder="Buscar por codigo o descripcion…"
+          accion={
+            <PanelFiltros
+              soloIcono
+              activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length}
+              onLimpiar={() => {
+                setMarcas([])
+                setFiltroProveedores([])
+                setTemporadas([])
+              }}
+              acciones={(cerrar) => (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Importar y exportar</p>
+                  <div className="flex flex-wrap gap-2">
+                    {can('can_create_products') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          cerrar()
+                          setImportando(true)
+                        }}
+                      >
+                        <Upload /> Importar
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filas.length === 0}
+                      onClick={() => exportarPDF({ titulo: 'Productos', columnas: COLUMNAS_EXPORT, filas, archivo: 'productos.pdf' })}
+                    >
+                      <FileDown /> PDF
+                    </Button>
+                    {can('can_export_excel') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={filas.length === 0}
+                        onClick={() => exportarExcel({ hoja: 'Productos', columnas: COLUMNAS_EXPORT, filas, archivo: 'productos.xlsx' })}
+                      >
+                        <FileSpreadsheet /> Excel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            >
+              <ListaFiltro label="Marca" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
+              <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
+              <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+            </PanelFiltros>
+          }
+        />
       </div>
 
       {cargando ? (
