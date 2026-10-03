@@ -42,6 +42,12 @@ const costoDe = (c: ProductoBusqueda['product_variants'][number]['product_varian
   return Array.isArray(c) ? (c[0]?.cost_price ?? null) : c.cost_price
 }
 
+/** "3 colores" / "1 color": cuantos colores distintos tiene el producto. */
+const etiquetaColores = (p: ProductoBusqueda) => {
+  const n = new Set(p.product_variants.map((v) => v.color)).size
+  return `${n} ${n === 1 ? 'color' : 'colores'}`
+}
+
 /**
  * Buscador de productos del proveedor elegido + grilla Color × Talla para
  * cargar cantidades. Devuelve, por variante, la cantidad definitiva: lo que
@@ -252,7 +258,7 @@ export function SelectorProductos({
                     <span>
                       <span className="font-medium">{p.code}</span> — {p.description}
                     </span>
-                    <span className="text-xs text-muted-foreground">{p.product_variants.length} variantes</span>
+                    <span className="whitespace-nowrap text-xs text-muted-foreground">{etiquetaColores(p)}</span>
                   </button>
                 </li>
               ))}
