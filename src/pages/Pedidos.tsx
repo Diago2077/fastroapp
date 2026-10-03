@@ -85,8 +85,10 @@ export default function Pedidos() {
     })
   }, [pedidos, busqueda, estado, vendedores, temporadas, proveedores])
 
-  const totalListado = useMemo(() => filas.reduce((s, p) => s + totalPedido(p), 0), [filas])
-  const costoListado = useMemo(() => filas.reduce((s, p) => s + costoPedido(p), 0), [filas])
+  // Los cancelados se listan pero no suman (igual que en dashboard y reportes)
+  const vigentesListados = useMemo(() => filas.filter((p) => p.status !== 'cancelled'), [filas])
+  const totalListado = useMemo(() => vigentesListados.reduce((s, p) => s + totalPedido(p), 0), [vigentesListados])
+  const costoListado = useMemo(() => vigentesListados.reduce((s, p) => s + costoPedido(p), 0), [vigentesListados])
 
   function pedirCambio(p: PedidoLista) {
     const siguiente = p.status === 'cancelled' ? 'open' : SIGUIENTE_ESTADO[p.status]
@@ -169,7 +171,7 @@ export default function Pedidos() {
           pie={
             <tr>
               <td className="px-4 py-2.5 text-xs text-muted-foreground" colSpan={4}>
-                {filas.length} pedidos
+                {filas.length} pedidos{vigentesListados.length !== filas.length && ` (${filas.length - vigentesListados.length} cancelados no suman)`}
               </td>
               <td className="tabular px-4 py-2.5 text-right">{formatGs(totalListado)}</td>
               {can('can_see_cost') && <td className="tabular px-4 py-2.5 text-right">{formatUsd(costoListado)}</td>}

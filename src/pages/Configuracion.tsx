@@ -6,7 +6,7 @@ import { Cargando } from '@/components/ui/estado'
 import { Field, Input } from '@/components/ui/field'
 import { EncabezadoPagina, Tarjeta } from '@/components/ui/pagina'
 import { cargarConfig, compararTallas, ordenTallas, setConfigLocal, useConfig } from '@/lib/config'
-import { mensajeError, traerTodo } from '@/lib/db'
+import { mensajeError } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -32,10 +32,11 @@ export default function Configuracion() {
   useEffect(() => {
     if (!cargada) return
     let vivo = true
-    traerTodo<{ size: string }>(() => supabase.from('product_variants').select('size').order('id'))
-      .then((filas) => {
+    Promise.resolve(supabase.rpc('tallas_existentes'))
+      .then(({ data, error }) => {
+        if (error) throw error
         if (!vivo) return
-        const existentes = [...new Set(filas.map((f) => f.size))]
+        const existentes = [...new Set((data ?? []) as string[])]
         const guardado = ordenTallas().filter((t) => existentes.includes(t))
         const nuevas = existentes.filter((t) => !guardado.includes(t)).sort(compararTallas)
         setTallas([...guardado, ...nuevas])
