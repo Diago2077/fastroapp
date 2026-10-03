@@ -61,7 +61,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="vos@ejemplo.com"
+              placeholder="usuario@fastro.com.py"
               autoComplete="email"
               required
               autoFocus
