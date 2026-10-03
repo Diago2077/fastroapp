@@ -1,7 +1,12 @@
 import { X } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
+
+// Modales abiertos a la vez: el body solo se desbloquea cuando se cierra el ultimo.
+// (Guardar y restaurar el valor previo falla con modales apilados: el que cierra
+// primero deja "hidden" guardado y el scroll queda trabado.)
+let modalesAbiertos = 0
 
 export function Modal({
   abierto,
@@ -20,20 +25,26 @@ export function Modal({
   footer?: ReactNode
   ancho?: string
 }) {
+  const cerrarRef = useRef(onCerrar)
+  useEffect(() => {
+    cerrarRef.current = onCerrar
+  })
+
   // Escape cierra, y el body no scrollea detras del modal
   useEffect(() => {
     if (!abierto) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCerrar()
+      if (e.key === 'Escape') cerrarRef.current()
     }
     document.addEventListener('keydown', onKey)
-    const overflowPrevio = document.body.style.overflow
+    modalesAbiertos++
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = overflowPrevio
+      modalesAbiertos = Math.max(0, modalesAbiertos - 1)
+      if (modalesAbiertos === 0) document.body.style.overflow = ''
     }
-  }, [abierto, onCerrar])
+  }, [abierto])
 
   if (!abierto) return null
 
