@@ -5,9 +5,9 @@ import { ImportarProductosModal } from '@/components/productos/ImportarProductos
 import { ProductoForm } from '@/components/productos/ProductoForm'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { FiltroMulti } from '@/components/ui/filtro-multi'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
+import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { compararTallas, ordenarTallas } from '@/lib/config'
@@ -178,9 +178,18 @@ export default function Productos() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar por codigo o descripcion…" />
-        <FiltroMulti label="Marca" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
-        <FiltroMulti label="Proveedor" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
-        <FiltroMulti label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+        <PanelFiltros
+          activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length}
+          onLimpiar={() => {
+            setMarcas([])
+            setFiltroProveedores([])
+            setTemporadas([])
+          }}
+        >
+          <ListaFiltro label="Marca" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
+          <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
+          <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+        </PanelFiltros>
       </div>
 
       {cargando ? (
