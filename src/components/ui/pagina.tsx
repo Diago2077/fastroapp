@@ -44,7 +44,7 @@ export function Buscador({
         value={valor}
         onChange={(e) => onChange(e.target.value)}
       />
-      {accion && <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{accion}</div>}
+      {accion && <div className="absolute right-1.5 top-1/2 z-30 -translate-y-1/2">{accion}</div>}
     </div>
   )
 }

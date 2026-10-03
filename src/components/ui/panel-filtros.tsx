@@ -31,6 +31,7 @@ export function PanelFiltros({
   const [abierto, setAbierto] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   /** Corrimiento horizontal para que el panel no se salga de la pantalla (celular). */
   const [dx, setDx] = useState(0)
   /** Alto maximo (px) de la zona con scroll: lo que queda de pantalla debajo del panel, sin tapar el pie ni la barra inferior. */
@@ -51,9 +52,9 @@ export function PanelFiltros({
       if (base.right > ancho - margen) nuevo = ancho - margen - base.right
       if (base.left + nuevo < margen) nuevo = margen - base.left
       if (nuevo !== actual) setDx(nuevo)
-      // Pie del panel (~49 px) + fila de acciones (~56 px, si hay) + barra inferior del celular (56 px) + margen
-      const libre =
-        document.documentElement.clientHeight - el.getBoundingClientRect().top - 49 - (acciones ? 56 : 0) - 56 - 16
+      // Lo fijo del panel (pie, fila de acciones, bordes) se mide, no se estima; ademas la barra inferior del celular (56 px) y un margen
+      const fijo = el.offsetHeight - (scrollRef.current?.offsetHeight ?? 0)
+      const libre = document.documentElement.clientHeight - el.getBoundingClientRect().top - fijo - 56 - 16
       setAltoMax(Math.max(160, Math.round(libre)))
     }
     acomodar()
@@ -133,6 +134,7 @@ export function PanelFiltros({
           )}
         >
           <div
+            ref={scrollRef}
             style={altoMax ? { maxHeight: `min(65vh, ${altoMax}px)` } : undefined}
             className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-4 overflow-y-auto p-4"
           >
