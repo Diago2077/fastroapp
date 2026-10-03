@@ -1,8 +1,8 @@
-import { Minus, Plus, Search } from 'lucide-react'
+import { Minus, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
-import { Modal } from '@/components/ui/modal'
+import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { compararTallas } from '@/lib/config'
 import { formatGs } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -68,6 +68,7 @@ export function SelectorProductos({
   const [buscando, setBuscando] = useState(false)
   const [producto, setProducto] = useState<ProductoBusqueda | null>(null)
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
+  const [colorALimpiar, setColorALimpiar] = useState<string | null>(null)
 
   useEffect(() => {
     if (!abierto) return
@@ -140,6 +141,18 @@ export function SelectorProductos({
   const cambiar = (id: string, delta: number) =>
     setCantidades((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) + delta) }))
 
+  const totalColor = (color: string) =>
+    (producto?.product_variants ?? []).reduce((s, v) => (v.color === color ? s + (cantidades[v.id] ?? 0) : s), 0)
+
+  function limpiarColor(color: string) {
+    setCantidades((c) => {
+      const copia = { ...c }
+      for (const v of producto?.product_variants ?? []) if (v.color === color) copia[v.id] = 0
+      return copia
+    })
+    setColorALimpiar(null)
+  }
+
   function aplicar() {
     if (!producto) return
     const variantes: ItemPedido[] = producto.product_variants
@@ -168,134 +181,159 @@ export function SelectorProductos({
   }, 0)
 
   return (
-    <Modal
-      abierto={abierto}
-      titulo={producto ? `${producto.code} — ${producto.description}` : 'Agregar productos'}
-      descripcion={producto ? 'Carga las cantidades por color y talla.' : 'Productos del proveedor elegido.'}
-      onCerrar={onCerrar}
-      ancho="max-w-3xl"
-      footer={
-        producto ? (
-          <>
-            <Button variant="outline" className="mr-auto" onClick={() => setProducto(null)}>
-              Volver a la busqueda
+    <>
+      <Modal
+        abierto={abierto}
+        titulo={producto ? `${producto.code} — ${producto.description}` : 'Agregar productos'}
+        descripcion={producto ? 'Carga las cantidades por color y talla.' : 'Productos del proveedor elegido.'}
+        onCerrar={onCerrar}
+        ancho="max-w-3xl"
+        footer={
+          producto ? (
+            <>
+              <Button variant="outline" className="mr-auto" onClick={() => setProducto(null)}>
+                Volver a la busqueda
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Total: <strong className="tabular text-foreground">{total} u.</strong>
+              </span>
+              <Button onClick={aplicar}>Agregar al pedido</Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={onCerrar}>
+              Cerrar
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Total: <strong className="tabular text-foreground">{total} u.</strong>
-            </span>
-            <Button onClick={aplicar}>Agregar al pedido</Button>
-          </>
-        ) : (
-          <Button variant="outline" onClick={onCerrar}>
-            Cerrar
-          </Button>
-        )
-      }
-    >
-      {!producto ? (
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Codigo o descripcion (minimo 2 letras)…"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              autoFocus
-            />
+          )
+        }
+      >
+        {!producto ? (
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Codigo o descripcion (minimo 2 letras)…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {buscando && <p className="text-xs text-muted-foreground">Buscando…</p>}
+            {!buscando && busqueda.trim().length >= 2 && resultados.length === 0 && (
+              <p className="text-sm text-muted-foreground">No hay productos de este proveedor que coincidan.</p>
+            )}
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {resultados.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => elegir(p)}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent"
+                  >
+                    <span>
+                      <span className="font-medium">{p.code}</span> — {p.description}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{p.product_variants.length} variantes</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-          {buscando && <p className="text-xs text-muted-foreground">Buscando…</p>}
-          {!buscando && busqueda.trim().length >= 2 && resultados.length === 0 && (
-            <p className="text-sm text-muted-foreground">No hay productos de este proveedor que coincidan.</p>
-          )}
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {resultados.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  onClick={() => elegir(p)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-accent"
-                >
-                  <span>
-                    <span className="font-medium">{p.code}</span> — {p.description}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{p.product_variants.length} variantes</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : grilla && grilla.colores.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="px-2 py-2 text-left font-medium">Color</th>
-                {grilla.tallas.map((t) => {
-                  const precio = producto.product_variants.find((v) => v.size === t)?.sale_price
-                  return (
-                    <th key={t} className="px-2 py-2 text-center font-medium">
-                      <div>{t}</div>
-                      <div className="tabular text-[11px] font-normal">{precio !== undefined && formatGs(precio)}</div>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {grilla.colores.map((color) => (
-                <tr key={color} className="border-b border-border last:border-0">
-                  <td className="px-2 py-2 font-medium">{color}</td>
-                  {grilla.tallas.map((talla) => {
-                    const v = grilla.porClave.get(`${color}\u0000${talla}`)
+        ) : grilla && grilla.colores.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="px-2 py-2 text-left font-medium">Color</th>
+                  {grilla.tallas.map((t) => {
+                    const precio = producto.product_variants.find((v) => v.size === t)?.sale_price
                     return (
-                      <td key={talla} className="px-2 py-2 text-center">
-                        {v ? (
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              type="button"
-                              aria-label="Menos"
-                              onClick={() => cambiar(v.id, -1)}
-                              className="flex size-7 items-center justify-center rounded-md border border-border hover:bg-accent"
-                            >
-                              <Minus className="size-3" />
-                            </button>
-                            <input
-                              inputMode="numeric"
-                              value={cantidades[v.id] ?? 0}
-                              onChange={(e) =>
-                                setCantidades((c) => ({ ...c, [v.id]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
-                              }
-                              className={cn(
-                                'h-7 w-10 rounded-md border text-center text-sm transition-colors',
-                                (cantidades[v.id] ?? 0) > 0
-                                  ? 'border-primary/50 bg-primary/20 font-semibold'
-                                  : 'border-input bg-card',
-                              )}
-                            />
-                            <button
-                              type="button"
-                              aria-label="Mas"
-                              onClick={() => cambiar(v.id, 1)}
-                              className="flex size-7 items-center justify-center rounded-md border border-border hover:bg-accent"
-                            >
-                              <Plus className="size-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
+                      <th key={t} className="px-2 py-2 text-center font-medium">
+                        <div>{t}</div>
+                        <div className="tabular text-[11px] font-normal">{precio !== undefined && formatGs(precio)}</div>
+                      </th>
                     )
                   })}
+                  <th className="px-2 py-2 text-center font-medium">Total</th>
+                  <th className="w-8" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Este producto no tiene variantes cargadas.</p>
-      )}
-    </Modal>
+              </thead>
+              <tbody>
+                {grilla.colores.map((color) => (
+                  <tr key={color} className="border-b border-border last:border-0">
+                    <td className="px-2 py-2 font-medium">{color}</td>
+                    {grilla.tallas.map((talla) => {
+                      const v = grilla.porClave.get(`${color}\u0000${talla}`)
+                      return (
+                        <td key={talla} className="px-2 py-2 text-center">
+                          {v ? (
+                            <div className="inline-flex items-center gap-1">
+                              <button
+                                type="button"
+                                aria-label="Menos"
+                                onClick={() => cambiar(v.id, -1)}
+                                className="flex size-7 items-center justify-center rounded-md border border-border hover:bg-accent"
+                              >
+                                <Minus className="size-3" />
+                              </button>
+                              <input
+                                inputMode="numeric"
+                                value={cantidades[v.id] ?? 0}
+                                onChange={(e) =>
+                                  setCantidades((c) => ({ ...c, [v.id]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
+                                }
+                                className={cn(
+                                  'h-7 w-10 rounded-md border text-center text-sm transition-colors',
+                                  (cantidades[v.id] ?? 0) > 0
+                                    ? 'border-primary/50 bg-primary/20 font-semibold'
+                                    : 'border-input bg-card',
+                                )}
+                              />
+                              <button
+                                type="button"
+                                aria-label="Mas"
+                                onClick={() => cambiar(v.id, 1)}
+                                className="flex size-7 items-center justify-center rounded-md border border-border hover:bg-accent"
+                              >
+                                <Plus className="size-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                    <td className="tabular px-2 py-2 text-center font-semibold">{totalColor(color)} u.</td>
+                    <td className="px-1 py-2 text-center">
+                      <button
+                        type="button"
+                        aria-label={`Limpiar ${color}`}
+                        title="Limpiar esta fila"
+                        disabled={totalColor(color) === 0}
+                        onClick={() => setColorALimpiar(color)}
+                        className="rounded p-1 text-muted-foreground hover:text-destructive disabled:pointer-events-none disabled:opacity-30"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Este producto no tiene variantes cargadas.</p>
+        )}
+      </Modal>
+      <ConfirmModal
+        abierto={colorALimpiar !== null}
+        titulo="Limpiar fila"
+        mensaje={`Se ponen en 0 todas las tallas del color ${colorALimpiar ?? ''}. Recien se aplica al pedido cuando toques "Agregar al pedido".`}
+        textoConfirmar="Limpiar"
+        onConfirmar={() => colorALimpiar && limpiarColor(colorALimpiar)}
+        onCancelar={() => setColorALimpiar(null)}
+      />
+    </>
   )
 }
