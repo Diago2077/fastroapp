@@ -41,7 +41,11 @@ self.addEventListener('fetch', (event) => {
         const cacheada = await cache.match(request)
         if (cacheada) return cacheada
         const respuesta = await fetch(request)
-        if (respuesta.ok) cache.put(request, respuesta.clone())
+        // Durante un deploy el servidor puede devolver index.html (200) para un
+        // archivo que todavia no existe: guardarlo dejaria la app en blanco
+        // hasta cambiar de version. Solo se cachea lo que no es HTML.
+        const tipo = respuesta.headers.get('content-type') || ''
+        if (respuesta.ok && !tipo.includes('text/html')) cache.put(request, respuesta.clone())
         return respuesta
       })(),
     )
