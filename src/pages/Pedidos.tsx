@@ -263,6 +263,7 @@ export default function Pedidos() {
             >
               <OpcionUnica
                 label="Estado"
+                porDefecto="open"
                 valor={estado}
                 onChange={setEstado}
                 opciones={[
@@ -274,9 +275,9 @@ export default function Pedidos() {
                 ]}
               />
               <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
-              {esAdmin && <ListaFiltro label="Vendedor" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
-              <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
-              <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
+              {esAdmin && <ListaFiltro label="Vendedor" todas="Todos los vendedores" plural="vendedores" opciones={opciones.vendedores} valor={vendedores} onChange={setVendedores} />}
+              <ListaFiltro label="Temporada" todas="Todas las temporadas" plural="temporadas" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+              <ListaFiltro label="Proveedor" todas="Todos los proveedores" plural="proveedores" opciones={opciones.proveedores} valor={proveedores} onChange={setProveedores} />
             </PanelFiltros>
           }
         />

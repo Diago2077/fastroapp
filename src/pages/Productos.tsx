@@ -207,9 +207,9 @@ export default function Productos() {
                 </div>
               )}
             >
-              <ListaFiltro label="Marca" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
-              <ListaFiltro label="Proveedor" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
-              <ListaFiltro label="Temporada" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
+              <ListaFiltro label="Marca" todas="Todas las marcas" plural="marcas" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
+              <ListaFiltro label="Proveedor" todas="Todos los proveedores" plural="proveedores" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
+              <ListaFiltro label="Temporada" todas="Todas las temporadas" plural="temporadas" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
             </PanelFiltros>
           }
         />

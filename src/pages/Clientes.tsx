@@ -145,7 +145,7 @@ export default function Clientes() {
                 </div>
               )}
             >
-              <ListaFiltro label="Ciudad" opciones={opcionesCiudad} valor={ciudades} onChange={setCiudades} />
+              <ListaFiltro label="Ciudad" todas="Todas las ciudades" plural="ciudades" opciones={opcionesCiudad} valor={ciudades} onChange={setCiudades} />
             </PanelFiltros>
           }
         />

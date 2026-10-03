@@ -1,4 +1,4 @@
-import { ListFilter, Search } from 'lucide-react'
+import { Check, ChevronDown, ListFilter, Search } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { normalizar } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -137,7 +137,7 @@ export function PanelFiltros({
           <div
             ref={scrollRef}
             style={altoMax ? { maxHeight: `min(65vh, ${altoMax}px)` } : undefined}
-            className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-4 overflow-y-auto p-4"
+            className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-2.5 overflow-y-auto p-4"
           >
             {children}
           </div>
@@ -168,30 +168,63 @@ export function PanelFiltros({
   )
 }
 
-function Encabezado({ label, cantidad, onLimpiar }: { label: string; cantidad?: number; onLimpiar?: () => void }) {
+/**
+ * Campo plegable tipo "dropdown": cerrado muestra un resumen de lo elegido
+ * ("Todas las marcas", "VER26", "3 vendedores"); al tocarlo se despliega
+ * debajo, empujando el resto del panel. `children` recibe `cerrar` para
+ * plegarlo (p. ej. al elegir en una lista de opcion unica).
+ */
+function Plegable({
+  resumen,
+  activo,
+  children,
+}: {
+  resumen: string
+  activo: boolean
+  children: (cerrar: () => void) => ReactNode
+}) {
+  const [abierto, setAbierto] = useState(false)
   return (
-    <div className="mb-1.5 flex items-center justify-between">
-      <p className="text-xs font-medium text-muted-foreground">
-        {label}
-        {cantidad ? ` · ${cantidad}` : ''}
-      </p>
-      {cantidad ? (
-        <button type="button" onClick={onLimpiar} className="text-[11px] text-muted-foreground hover:text-foreground">
-          Limpiar
-        </button>
-      ) : null}
+    <div>
+      <button
+        type="button"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((a) => !a)}
+        className={cn(
+          'flex h-10 w-full items-center justify-between gap-2 rounded-md border bg-card px-3 text-left text-sm shadow-xs transition-colors hover:bg-accent/50',
+          activo ? 'border-primary/60 text-foreground' : 'border-input text-muted-foreground',
+          abierto && 'border-primary',
+        )}
+      >
+        <span className="truncate">{resumen}</span>
+        <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', abierto && 'rotate-180')} />
+      </button>
+      {abierto && (
+        <div className="mt-1.5 overflow-hidden rounded-md border border-border bg-background">
+          {children(() => setAbierto(false))}
+        </div>
+      )}
     </div>
   )
 }
 
-/** Seleccion multiple dentro del panel. Sin nada tildado no filtra. */
+/**
+ * Seleccion multiple plegable. Sin nada tildado no filtra. `todas` es el texto
+ * del campo cerrado sin seleccion ("Todas las marcas") y `plural` el de varias
+ * ("3 marcas"). Con 6 o mas opciones suma un buscador.
+ */
 export function ListaFiltro({
   label,
+  todas,
+  plural,
   opciones,
   valor,
   onChange,
 }: {
+  /** Nombre del filtro (accesibilidad). */
   label: string
+  todas: string
+  plural: string
   opciones: OpcionFiltro[]
   valor: string[]
   onChange: (valor: string[]) => void
@@ -200,45 +233,65 @@ export function ListaFiltro({
   const q = normalizar(busqueda)
   const visibles = q ? opciones.filter((o) => normalizar(o.label).includes(q)) : opciones
   const alternar = (v: string) => onChange(valor.includes(v) ? valor.filter((x) => x !== v) : [...valor, v])
+  const resumen =
+    valor.length === 0
+      ? todas
+      : valor.length === 1
+        ? (opciones.find((o) => o.value === valor[0])?.label ?? valor[0])
+        : `${valor.length} ${plural}`
 
   return (
-    <div>
-      <Encabezado label={label} cantidad={valor.length} onLimpiar={() => onChange([])} />
-      <div className="rounded-md border border-border">
-        {opciones.length >= 6 && (
-          <div className="relative border-b border-border p-1.5">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar…"
-              className="w-full rounded-md border border-input bg-background py-1 pl-7 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-        )}
-        <div className="max-h-36 overflow-y-auto py-1">
-          {visibles.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground">Sin opciones.</p>
-          ) : (
-            visibles.map((o) => (
-              <label key={o.value} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent">
-                <input
-                  type="checkbox"
-                  checked={valor.includes(o.value)}
-                  onChange={() => alternar(o.value)}
-                  className="size-3.5 accent-[var(--primary)]"
-                />
-                <span className="truncate">{o.label}</span>
-              </label>
-            ))
+    <Plegable resumen={resumen} activo={valor.length > 0}>
+      {() => (
+        <div role="group" aria-label={label}>
+          {opciones.length >= 6 && (
+            <div className="relative border-b border-border p-1.5">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar…"
+                className="w-full rounded-md border border-input bg-card py-1 pl-7 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
           )}
+          <div className="max-h-48 overflow-y-auto py-1">
+            {visibles.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-muted-foreground">Sin opciones.</p>
+            ) : (
+              visibles.map((o) => (
+                <label key={o.value} className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-accent">
+                  <input
+                    type="checkbox"
+                    checked={valor.includes(o.value)}
+                    onChange={() => alternar(o.value)}
+                    className="size-4 accent-[var(--primary)]"
+                  />
+                  <span className="truncate">{o.label}</span>
+                </label>
+              ))
+            )}
+          </div>
+          <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+            <span>{valor.length === 0 ? 'Todas incluidas' : `${valor.length} seleccionadas`}</span>
+            {valor.length > 0 && (
+              <button type="button" onClick={() => onChange([])} className="font-medium text-primary hover:underline">
+                Limpiar
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </Plegable>
   )
 }
 
-/** Rango de fechas (desde / hasta, ambos inclusivos y opcionales). */
+const fechaCorta = (iso: string) => {
+  const [a, m, d] = iso.split('-')
+  return `${d}/${m}/${a}`
+}
+
+/** Rango de fechas plegable (desde / hasta, ambos inclusivos y opcionales). */
 export function RangoFechas({
   label,
   desde,
@@ -252,64 +305,86 @@ export function RangoFechas({
   onDesde: (v: string) => void
   onHasta: (v: string) => void
 }) {
-  const hayRango = Boolean(desde || hasta)
+  const resumen =
+    desde && hasta
+      ? `${fechaCorta(desde)} – ${fechaCorta(hasta)}`
+      : desde
+        ? `Desde ${fechaCorta(desde)}`
+        : hasta
+          ? `Hasta ${fechaCorta(hasta)}`
+          : `Cualquier ${label.toLowerCase()}`
   return (
-    <div>
-      <Encabezado
-        label={label}
-        cantidad={hayRango ? 1 : 0}
-        onLimpiar={() => {
-          onDesde('')
-          onHasta('')
-        }}
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-[11px] text-muted-foreground">
-          Desde
-          <Input type="date" className="mt-1 h-9" value={desde} max={hasta || undefined} onChange={(e) => onDesde(e.target.value)} />
-        </label>
-        <label className="text-[11px] text-muted-foreground">
-          Hasta
-          <Input type="date" className="mt-1 h-9" value={hasta} min={desde || undefined} onChange={(e) => onHasta(e.target.value)} />
-        </label>
-      </div>
-    </div>
+    <Plegable resumen={resumen} activo={Boolean(desde || hasta)}>
+      {() => (
+        <div className="space-y-2 p-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] text-muted-foreground">
+              Desde
+              <Input type="date" className="mt-1 h-9" value={desde} max={hasta || undefined} onChange={(e) => onDesde(e.target.value)} />
+            </label>
+            <label className="text-[11px] text-muted-foreground">
+              Hasta
+              <Input type="date" className="mt-1 h-9" value={hasta} min={desde || undefined} onChange={(e) => onHasta(e.target.value)} />
+            </label>
+          </div>
+          {(desde || hasta) && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  onDesde('')
+                  onHasta('')
+                }}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </Plegable>
   )
 }
 
-/** Una sola opcion entre varias (botones tipo pastilla). */
+/** Una sola opcion entre varias, plegable: elegir una cierra el campo. */
 export function OpcionUnica<T extends string>({
   label,
   opciones,
   valor,
+  porDefecto,
   onChange,
 }: {
   label: string
   opciones: { value: T; label: string }[]
   valor: T
+  /** Valor inicial: si el elegido es otro, el campo se marca como activo. */
+  porDefecto: T
   onChange: (valor: T) => void
 }) {
+  const elegida = opciones.find((o) => o.value === valor)
   return (
-    <div>
-      <Encabezado label={label} />
-      <div className="flex flex-wrap gap-1.5">
-        {opciones.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={valor === o.value}
-            onClick={() => onChange(o.value)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs transition-colors',
-              valor === o.value
-                ? 'border-primary bg-primary/15 font-medium text-foreground'
-                : 'border-input text-muted-foreground hover:bg-accent',
-            )}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <Plegable resumen={`${label}: ${elegida?.label ?? ''}`} activo={valor !== porDefecto}>
+      {(cerrar) => (
+        <div role="listbox" aria-label={label} className="py-1">
+          {opciones.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={valor === o.value}
+              onClick={() => {
+                onChange(o.value)
+                cerrar()
+              }}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+            >
+              <span className={cn(valor === o.value && 'font-medium')}>{o.label}</span>
+              {valor === o.value && <Check className="size-4 text-primary" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </Plegable>
   )
 }
