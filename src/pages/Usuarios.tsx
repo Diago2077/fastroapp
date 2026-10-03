@@ -1,11 +1,12 @@
-import { Plus, Search, UserRound } from 'lucide-react'
+import { Plus, UserRound } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { Input } from '@/components/ui/field'
 import { ConfirmModal } from '@/components/ui/modal'
+import { Buscador } from '@/components/ui/pagina'
+import { OpcionUnica, PanelFiltros } from '@/components/ui/panel-filtros'
 import {
   CambiarPasswordModal,
   EditarUsuarioModal,
@@ -14,7 +15,7 @@ import {
 } from '@/components/usuarios/UsuarioModales'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsuarios } from '@/hooks/useUsuarios'
-import { ROL_LABEL, type Usuario } from '@/lib/database.types'
+import { ROL_LABEL, type Rol, type Usuario } from '@/lib/database.types'
 import { normalizar } from '@/lib/format'
 
 /**
@@ -39,12 +40,17 @@ export default function Usuarios() {
   } = useUsuarios()
 
   const [busqueda, setBusqueda] = useState('')
+  const [filtroRol, setFiltroRol] = useState<Rol | ''>('')
+  const [filtroEstado, setFiltroEstado] = useState<'' | 'activo' | 'inactivo'>('')
 
   const filtrados = useMemo(() => {
     const q = normalizar(busqueda)
-    if (!q) return data
-    return data.filter((u) => normalizar(u.nombre).includes(q) || normalizar(u.email).includes(q))
-  }, [data, busqueda])
+    return data.filter((u) => {
+      if (filtroRol && u.rol !== filtroRol) return false
+      if (filtroEstado && (u.activo ? 'activo' : 'inactivo') !== filtroEstado) return false
+      return !q || normalizar(u.nombre).includes(q) || normalizar(u.email).includes(q)
+    })
+  }, [data, busqueda, filtroRol, filtroEstado])
 
   const [modalNuevo, setModalNuevo] = useState(false)
   const [modalDetalle, setModalDetalle] = useState<Usuario | null>(null)
@@ -75,13 +81,44 @@ export default function Usuarios() {
       </div>
 
       {data.length > 0 && (
-        <div className="relative mb-4 max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
+        <div className="mb-4">
+          <Buscador
+            valor={busqueda}
+            onChange={setBusqueda}
             placeholder="Buscar por nombre o email…"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            accion={
+              <PanelFiltros
+                soloIcono
+                activos={(filtroRol ? 1 : 0) + (filtroEstado ? 1 : 0)}
+                onLimpiar={() => {
+                  setFiltroRol('')
+                  setFiltroEstado('')
+                }}
+              >
+                <OpcionUnica
+                  label="Rol"
+                  porDefecto=""
+                  valor={filtroRol}
+                  onChange={setFiltroRol}
+                  opciones={[
+                    { value: '', label: 'Todos' },
+                    { value: 'admin', label: 'Administradores' },
+                    { value: 'usuario', label: 'Usuarios' },
+                  ]}
+                />
+                <OpcionUnica
+                  label="Estado"
+                  porDefecto=""
+                  valor={filtroEstado}
+                  onChange={setFiltroEstado}
+                  opciones={[
+                    { value: '', label: 'Todos' },
+                    { value: 'activo', label: 'Activos' },
+                    { value: 'inactivo', label: 'Inactivos' },
+                  ]}
+                />
+              </PanelFiltros>
+            }
           />
         </div>
       )}
