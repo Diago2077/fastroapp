@@ -49,19 +49,26 @@ export function Tabla<T>({
   const [visibles, setVisibles] = useState(LOTE)
   const centinela = useRef<HTMLDivElement>(null)
   const contenedor = useRef<HTMLDivElement>(null)
-  const [altoMax, setAltoMax] = useState<number | null>(null)
+  const [medida, setMedida] = useState<{ alto: number; margenInferior: number } | null>(null)
 
-  // Alto disponible = pantalla - lo que hay arriba de la tabla - el margen de abajo
-  // (en celular, la barra inferior de navegacion).
+  // Alto disponible = pantalla - lo que hay arriba de la tabla - la barra inferior de
+  // navegacion (solo celular) - un hueco igual al margen lateral de la pagina. El layout
+  // de la pagina agrega su propio relleno debajo (py + pb-16 en celular): se compensa con
+  // un margen negativo para que la pagina no llegue a scrollear.
   useLayoutEffect(() => {
     const el = contenedor.current
     if (!ajustarAPantalla || !el) return
     const calcular = () => {
       const arriba = el.getBoundingClientRect().top + window.scrollY
-      const escritorio = window.matchMedia('(min-width: 768px)').matches
-      const margenAbajo = escritorio ? 34 : 24 + 64 + 2
-      const libre = Math.max(ALTO_MINIMO, Math.floor(window.innerHeight - arriba - margenAbajo))
-      setAltoMax((a) => (a !== null && Math.abs(a - libre) < 2 ? a : libre))
+      const conBarraInferior = !window.matchMedia('(min-width: 768px)').matches
+      const hueco = window.matchMedia('(min-width: 640px)').matches ? 24 : 16
+      const nav = [...document.querySelectorAll('nav')].find((n) => getComputedStyle(n).position === 'fixed')
+      const barra = conBarraInferior ? (nav?.getBoundingClientRect().height ?? 56) : 0
+      const relleno = conBarraInferior ? 24 + 64 : 32
+      const fondo = window.innerHeight - barra - hueco
+      const alto = Math.max(ALTO_MINIMO, Math.floor(fondo - arriba))
+      const margenInferior = -Math.max(0, arriba + alto + relleno - window.innerHeight + 1)
+      setMedida((m) => (m && Math.abs(m.alto - alto) < 2 && m.margenInferior === margenInferior ? m : { alto, margenInferior }))
     }
     calcular()
     window.addEventListener('resize', calcular)
@@ -118,7 +125,7 @@ export function Tabla<T>({
   return (
     <div
       ref={contenedor}
-      style={ajustarAPantalla && altoMax ? { maxHeight: altoMax } : undefined}
+      style={ajustarAPantalla && medida ? { maxHeight: medida.alto, marginBottom: medida.margenInferior } : undefined}
       className={cn('rounded-lg border border-border bg-card', ajustarAPantalla ? 'overflow-auto' : 'overflow-x-auto')}
     >
       <table className="w-full text-sm">
