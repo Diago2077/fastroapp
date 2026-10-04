@@ -84,6 +84,8 @@ export default function Productos() {
             .from('products')
             .select('*, providers(name), product_variants(id, color, size, sale_price)')
             .eq('active', true)
+            // Mas nuevos primero; los cargados juntos (importacion) comparten fecha, ahi manda el codigo
+            .order('created_at', { ascending: false })
             .order('code')
             .order('id'),
         ),

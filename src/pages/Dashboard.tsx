@@ -16,7 +16,7 @@ import { ESTADO_LABEL, type Cliente } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
 import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
 import { costoDe, SELECT_STATS, ventaDe, vigentes, type PedidoStats } from '@/lib/estadisticas'
-import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO, normalizar } from '@/lib/format'
+import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO } from '@/lib/format'
 import { TONO_ESTADO } from '@/lib/pedidos'
 import { supabase } from '@/lib/supabase'
 
@@ -121,7 +121,8 @@ export default function Dashboard() {
     return clientes
       .filter((c) => !compraron.has(c.id))
       .map((c) => ({ ...c, ultimo: ultimoDe.get(c.id) ?? null }))
-      .sort((a, b) => normalizar(a.name).localeCompare(normalizar(b.name), 'es'))
+      // Clientes nuevos primero; los cargados juntos (importacion) comparten fecha, ahi manda el codigo
+      .sort((a, b) => b.created_at.localeCompare(a.created_at) || (b.code ?? 0) - (a.code ?? 0))
   }, [esAdmin, pedidos, clientes, temporadaSel])
 
   const columnasSinPedidos: ColumnaTabla<ClienteSinPedidos>[] = [
