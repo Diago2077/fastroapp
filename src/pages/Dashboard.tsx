@@ -1,10 +1,11 @@
-import { ClipboardCheck, FileDown, FileText, Truck } from 'lucide-react'
+import { ClipboardCheck, FileDown, FileSpreadsheet, FileText, Truck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PedidoModal } from '@/components/pedidos/PedidoModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
+import { Select } from '@/components/ui/field'
 import { EncabezadoPagina } from '@/components/ui/pagina'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,13 +13,37 @@ import { usePermisos } from '@/hooks/usePermisos'
 import { useConfig } from '@/lib/config'
 import { ESTADO_LABEL } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
+import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
 import { costoDe, SELECT_STATS, ventaDe, vigentes, type PedidoStats } from '@/lib/estadisticas'
-import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO } from '@/lib/format'
+import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO, normalizar } from '@/lib/format'
 import { TONO_ESTADO } from '@/lib/pedidos'
 import { supabase } from '@/lib/supabase'
 
 /** Cuantos pedidos muestra "Ultimos pedidos". */
 const ULTIMOS = 10
+/** Cuantos clientes sin pedidos se ven antes de "Ver todos". */
+const SIN_PEDIDOS_VISIBLES = 10
+
+interface ClienteBasico {
+  id: string
+  code: number | null
+  name: string
+  store_name: string | null
+  city: string | null
+}
+
+/** Cliente sin pedidos en la temporada elegida y la fecha de su ultimo pedido (de cualquier temporada). */
+interface ClienteSinPedidos extends ClienteBasico {
+  ultimo: string | null
+}
+
+const COLUMNAS_SIN_PEDIDOS: Columna<ClienteSinPedidos>[] = [
+  { header: 'Codigo', valor: (c) => c.code ?? '', ancho: 10 },
+  { header: 'Nombre', valor: (c) => c.name, ancho: 32 },
+  { header: 'Tienda', valor: (c) => c.store_name ?? '', ancho: 26 },
+  { header: 'Ciudad', valor: (c) => c.city ?? '', ancho: 18 },
+  { header: 'Ultimo pedido', valor: (c) => (c.ultimo ? formatFecha(c.ultimo) : 'Nunca compro'), ancho: 16 },
+]
 
 /**
  * Inicio, para todos. Trabaja sobre `orders`, y la RLS ya limita a cada
@@ -38,17 +63,29 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<{ id: string | null; duplicarDe?: string } | null>(null)
+  const [clientes, setClientes] = useState<ClienteBasico[]>([])
+  /** Temporada de "Clientes sin pedidos"; null = la actual. */
+  const [tempSinPedidos, setTempSinPedidos] = useState<string | null>(null)
+  const [verTodosSinPedidos, setVerTodosSinPedidos] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
       setPedidos(await traerTodo<PedidoStats>(() => supabase.from('orders').select(SELECT_STATS).order('id')))
+      // Solo el admin ve "Clientes sin pedidos": un usuario normal ve unicamente sus pedidos y la lista saldria falsa
+      if (esAdmin) {
+        setClientes(
+          await traerTodo<ClienteBasico>(() =>
+            supabase.from('clients').select('id, code, name, store_name, city').eq('active', true).order('id'),
+          ),
+        )
+      }
       setError(null)
     } catch {
       setError('No se pudieron cargar los datos.')
     } finally {
       setCargando(false)
     }
-  }, [])
+  }, [esAdmin])
 
   useEffect(() => {
     void cargar()
@@ -67,6 +104,50 @@ export default function Dashboard() {
       recientes,
     }
   }, [pedidos])
+
+  const temporadas = useMemo(
+    () =>
+      [...new Set([temporadaActual, ...pedidos.map((p) => p.season ?? '')].filter(Boolean))].sort((a, b) =>
+        b.localeCompare(a, 'es', { numeric: true }),
+      ),
+    [pedidos, temporadaActual],
+  )
+  const temporadaSel = tempSinPedidos ?? temporadaActual
+
+  const sinPedidos = useMemo<ClienteSinPedidos[]>(() => {
+    if (!esAdmin) return []
+    const ok = vigentes(pedidos)
+    const ultimoDe = new Map<string, string>()
+    const compraron = new Set<string>()
+    for (const p of ok) {
+      if (!p.client_id) continue
+      if (p.created_at > (ultimoDe.get(p.client_id) ?? '')) ultimoDe.set(p.client_id, p.created_at)
+      if (p.season === temporadaSel) compraron.add(p.client_id)
+    }
+    return clientes
+      .filter((c) => !compraron.has(c.id))
+      .map((c) => ({ ...c, ultimo: ultimoDe.get(c.id) ?? null }))
+      .sort((a, b) => normalizar(a.name).localeCompare(normalizar(b.name), 'es'))
+  }, [esAdmin, pedidos, clientes, temporadaSel])
+
+  const columnasSinPedidos: ColumnaTabla<ClienteSinPedidos>[] = [
+    { id: 'code', header: 'Codigo', render: (c) => c.code ?? '—', orden: (c) => c.code },
+    { id: 'name', header: 'Cliente', render: (c) => <span className="font-medium">{c.name}</span>, orden: (c) => c.name },
+    { id: 'city', header: 'Ciudad', render: (c) => c.city ?? '—', orden: (c) => c.city },
+    {
+      id: 'ultimo',
+      header: 'Ultimo pedido',
+      render: (c) => (c.ultimo ? formatFecha(c.ultimo) : <span className="text-muted-foreground">Nunca compro</span>),
+      orden: (c) => c.ultimo ?? '',
+    },
+  ]
+
+  const exportarSinPedidos = (formato: 'pdf' | 'excel') => {
+    const titulo = `Clientes sin pedidos · ${temporadaSel}`
+    return formato === 'pdf'
+      ? exportarPDF({ titulo, columnas: COLUMNAS_SIN_PEDIDOS, filas: sinPedidos, archivo: `clientes-sin-pedidos-${temporadaSel}.pdf` })
+      : exportarExcel({ hoja: 'Sin pedidos', columnas: COLUMNAS_SIN_PEDIDOS, filas: sinPedidos, archivo: `clientes-sin-pedidos-${temporadaSel}.xlsx` })
+  }
 
   async function descargarPDF() {
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
@@ -188,6 +269,61 @@ export default function Dashboard() {
               />
             )}
           </div>
+
+          {esAdmin && temporadas.length > 0 && (
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-foreground">Clientes sin pedidos · {sinPedidos.length}</h2>
+                <div className="flex items-center gap-2">
+                  <Select
+                    className="h-8 w-auto text-xs"
+                    aria-label="Temporada"
+                    value={temporadaSel}
+                    onChange={(e) => {
+                      setTempSinPedidos(e.target.value)
+                      setVerTodosSinPedidos(false)
+                    }}
+                  >
+                    {temporadas.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button variant="outline" size="sm" disabled={sinPedidos.length === 0} onClick={() => exportarSinPedidos('pdf')}>
+                    <FileDown /> PDF
+                  </Button>
+                  {can('can_export_excel') && (
+                    <Button variant="outline" size="sm" disabled={sinPedidos.length === 0} onClick={() => exportarSinPedidos('excel')}>
+                      <FileSpreadsheet /> Excel
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {sinPedidos.length === 0 ? (
+                <Vacio titulo="Todos los clientes activos tienen pedidos en esta temporada" />
+              ) : (
+                <>
+                  <Tabla
+                    columnas={columnasSinPedidos}
+                    filas={verTodosSinPedidos ? sinPedidos : sinPedidos.slice(0, SIN_PEDIDOS_VISIBLES)}
+                    clave={(c) => c.id}
+                  />
+                  {sinPedidos.length > SIN_PEDIDOS_VISIBLES && (
+                    <div className="mt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setVerTodosSinPedidos((v) => !v)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {verTodosSinPedidos ? 'Ver menos' : `Ver todos (${sinPedidos.length})`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
