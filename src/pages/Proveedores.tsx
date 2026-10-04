@@ -72,7 +72,6 @@ export default function Proveedores() {
               <PanelFiltros
                 soloIcono
                 activos={0}
-                onLimpiar={() => undefined}
                 acciones={
                   <div>
                     <p className="mb-1.5 text-xs font-medium text-muted-foreground">Exportar lo que se ve</p>
@@ -102,9 +101,7 @@ export default function Proveedores() {
                     </div>
                   </div>
                 }
-              >
-                {null}
-              </PanelFiltros>
+              />
             }
           />
         }

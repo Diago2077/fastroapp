@@ -23,11 +23,12 @@ export function PanelFiltros({
 }: {
   activos: number
   resumen?: string
-  onLimpiar: () => void
+  /** Sin esto no hay "Restablecer filtros" (paneles que solo ofrecen acciones). */
+  onLimpiar?: () => void
   soloIcono?: boolean
   /** Fila fija debajo de los filtros. Si es funcion, recibe `cerrar` para cerrar el panel antes de abrir un modal. */
   acciones?: ReactNode | ((cerrar: () => void) => ReactNode)
-  children: ReactNode
+  children?: ReactNode
 }) {
   const [abierto, setAbierto] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -134,26 +135,30 @@ export function PanelFiltros({
             soloIcono ? 'right-0 mt-3' : 'left-0 mt-2',
           )}
         >
-          <div
-            ref={scrollRef}
-            style={altoMax ? { maxHeight: `min(65vh, ${altoMax}px)` } : undefined}
-            className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-2.5 overflow-y-auto p-4"
-          >
-            {children}
-          </div>
+          {children && (
+            <div
+              ref={scrollRef}
+              style={altoMax ? { maxHeight: `min(65vh, ${altoMax}px)` } : undefined}
+              className="max-h-[min(65vh,calc(100dvh-22rem))] space-y-2.5 overflow-y-auto p-4"
+            >
+              {children}
+            </div>
+          )}
           {acciones && (
-            <div className="border-t border-border px-4 py-3">
+            <div className={cn('px-4 py-3', children && 'border-t border-border')}>
               {typeof acciones === 'function' ? acciones(() => setAbierto(false)) : acciones}
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
-            <button
-              type="button"
-              onClick={onLimpiar}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Restablecer filtros
-            </button>
+          <div className={cn('flex items-center border-t border-border px-4 py-2.5', onLimpiar ? 'justify-between' : 'justify-end')}>
+            {onLimpiar && (
+              <button
+                type="button"
+                onClick={onLimpiar}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Restablecer filtros
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setAbierto(false)}
