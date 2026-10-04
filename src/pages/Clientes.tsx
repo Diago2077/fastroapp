@@ -2,9 +2,9 @@ import { FileDown, FileSpreadsheet, Plus, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { FichaCliente } from '@/components/clientes/FichaCliente'
 import { Badge } from '@/components/ui/badge'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { Field, Input, Select } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
 import { ListaFiltro, OpcionUnica, PanelFiltros } from '@/components/ui/panel-filtros'
@@ -182,9 +182,8 @@ export default function Clientes() {
         <Tabla ajustarAPantalla columnas={columnas} filas={filtradas} clave={(c) => c.id} onClickFila={setEdicion} />
       )}
 
-      <ClienteModal
+      <FichaCliente
         valor={edicion}
-        puedeEditar={can('can_edit_clients')}
         onCerrar={() => setEdicion(null)}
         onGuardado={() => {
           setEdicion(null)
@@ -201,129 +200,6 @@ export default function Clientes() {
         }}
       />
     </div>
-  )
-}
-
-const VACIO = { code: '', name: '', store_name: '', ruc: '', phone: '', city: '', email: '' }
-
-function ClienteModal({
-  valor,
-  puedeEditar,
-  onCerrar,
-  onGuardado,
-}: {
-  valor: Cliente | 'nuevo' | null
-  puedeEditar: boolean
-  onCerrar: () => void
-  onGuardado: () => void
-}) {
-  const existente = valor && valor !== 'nuevo' ? valor : null
-  const [f, setF] = useState(VACIO)
-  const [activo, setActivo] = useState(true)
-  const [guardando, setGuardando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const editable = valor === 'nuevo' || puedeEditar
-
-  useEffect(() => {
-    if (valor === null) return
-    setF(
-      existente
-        ? {
-            code: String(existente.code ?? ''),
-            name: existente.name,
-            store_name: existente.store_name ?? '',
-            ruc: existente.ruc ?? '',
-            phone: existente.phone ?? '',
-            city: existente.city ?? '',
-            email: existente.email ?? '',
-          }
-        : VACIO,
-    )
-    setActivo(existente?.active ?? true)
-    setError(null)
-  }, [valor, existente])
-
-  const set = (k: keyof typeof VACIO) => (e: React.ChangeEvent<HTMLInputElement>) => setF((p) => ({ ...p, [k]: e.target.value }))
-
-  async function guardar() {
-    const code = Number(f.code)
-    if (!Number.isInteger(code) || code < 1) return setError('El codigo tiene que ser un numero entero mayor a 0.')
-    if (!f.name.trim()) return setError('Ingresa el nombre.')
-    setGuardando(true)
-    const datos = {
-      code,
-      name: f.name.trim(),
-      store_name: f.store_name.trim() || null,
-      ruc: f.ruc.trim() || null,
-      phone: f.phone.trim() || null,
-      city: f.city.trim() || null,
-      email: f.email.trim() || null,
-      active: activo,
-    }
-    const { error: err } = existente
-      ? await supabase.from('clients').update(datos).eq('id', existente.id)
-      : await supabase.from('clients').insert(datos)
-    setGuardando(false)
-    if (err) {
-      return setError(err.code === '23505' ? `El codigo ${code} ya esta en uso.` : mensajeError(err, 'No se pudo guardar el cliente.'))
-    }
-    toast.success(existente ? 'Cliente actualizado' : 'Cliente creado')
-    onGuardado()
-  }
-
-  return (
-    <Modal
-      abierto={valor !== null}
-      titulo={existente ? `Cliente — ${existente.name}` : 'Nuevo cliente'}
-      onCerrar={onCerrar}
-      footer={
-        <>
-          <Button variant="outline" onClick={onCerrar} disabled={guardando}>
-            Cerrar
-          </Button>
-          {editable && (
-            <Button onClick={guardar} disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
-          )}
-        </>
-      }
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Codigo *">
-          <Input type="number" min={1} value={f.code} onChange={set('code')} disabled={!editable} autoFocus />
-        </Field>
-        <Field label="Nombre *">
-          <Input value={f.name} onChange={set('name')} disabled={!editable} />
-        </Field>
-        <Field label="Tienda">
-          <Input value={f.store_name} onChange={set('store_name')} disabled={!editable} />
-        </Field>
-        <Field label="RUC">
-          <Input value={f.ruc} onChange={set('ruc')} disabled={!editable} />
-        </Field>
-        <Field label="Telefono">
-          <Input value={f.phone} onChange={set('phone')} disabled={!editable} />
-        </Field>
-        <Field label="Ciudad">
-          <Input value={f.city} onChange={set('city')} disabled={!editable} />
-        </Field>
-        <Field label="Email">
-          <Input type="email" value={f.email} onChange={set('email')} disabled={!editable} />
-        </Field>
-        <Field label="Estado">
-          <Select value={activo ? 'activo' : 'inactivo'} onChange={(e) => setActivo(e.target.value === 'activo')} disabled={!editable}>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </Select>
-        </Field>
-      </div>
-      {error && (
-        <div className="mt-4">
-          <ErrorBox mensaje={error} />
-        </div>
-      )}
-    </Modal>
   )
 }
 

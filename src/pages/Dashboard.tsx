@@ -1,6 +1,7 @@
 import { ClipboardCheck, FileDown, FileSpreadsheet, FileText, Truck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { FichaCliente } from '@/components/clientes/FichaCliente'
 import { PedidoModal } from '@/components/pedidos/PedidoModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,7 @@ import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { useAuth } from '@/hooks/useAuth'
 import { usePermisos } from '@/hooks/usePermisos'
 import { useConfig } from '@/lib/config'
-import { ESTADO_LABEL } from '@/lib/database.types'
+import { ESTADO_LABEL, type Cliente } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
 import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
 import { costoDe, SELECT_STATS, ventaDe, vigentes, type PedidoStats } from '@/lib/estadisticas'
@@ -24,16 +25,8 @@ const ULTIMOS = 10
 /** Cuantos clientes sin pedidos se ven antes de "Ver todos". */
 const SIN_PEDIDOS_VISIBLES = 10
 
-interface ClienteBasico {
-  id: string
-  code: number | null
-  name: string
-  store_name: string | null
-  city: string | null
-}
-
 /** Cliente sin pedidos en la temporada elegida y la fecha de su ultimo pedido (de cualquier temporada). */
-interface ClienteSinPedidos extends ClienteBasico {
+interface ClienteSinPedidos extends Cliente {
   ultimo: string | null
 }
 
@@ -63,10 +56,11 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<{ id: string | null; duplicarDe?: string } | null>(null)
-  const [clientes, setClientes] = useState<ClienteBasico[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   /** Temporada de "Clientes sin pedidos"; null = la actual. */
   const [tempSinPedidos, setTempSinPedidos] = useState<string | null>(null)
   const [verTodosSinPedidos, setVerTodosSinPedidos] = useState(false)
+  const [ficha, setFicha] = useState<Cliente | null>(null)
 
   const cargar = useCallback(async () => {
     try {
@@ -74,8 +68,8 @@ export default function Dashboard() {
       // Solo el admin ve "Clientes sin pedidos": un usuario normal ve unicamente sus pedidos y la lista saldria falsa
       if (esAdmin) {
         setClientes(
-          await traerTodo<ClienteBasico>(() =>
-            supabase.from('clients').select('id, code, name, store_name, city').eq('active', true).order('id'),
+          await traerTodo<Cliente>(() =>
+            supabase.from('clients').select('*').eq('active', true).order('id'),
           ),
         )
       }
@@ -308,6 +302,7 @@ export default function Dashboard() {
                     columnas={columnasSinPedidos}
                     filas={verTodosSinPedidos ? sinPedidos : sinPedidos.slice(0, SIN_PEDIDOS_VISIBLES)}
                     clave={(c) => c.id}
+                    onClickFila={setFicha}
                   />
                   {sinPedidos.length > SIN_PEDIDOS_VISIBLES && (
                     <div className="mt-2 text-center">
@@ -326,6 +321,15 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      <FichaCliente
+        valor={ficha}
+        onCerrar={() => setFicha(null)}
+        onGuardado={() => {
+          setFicha(null)
+          void cargar()
+        }}
+      />
 
       <PedidoModal
         abierto={modal !== null}
