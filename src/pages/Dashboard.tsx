@@ -243,27 +243,6 @@ export default function Dashboard() {
             <Indicador etiqueta="Pedidos Enviados" valor={String(datos.enviados)} icono={<Truck className="size-4" />} />
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-foreground">Ultimos pedidos</h2>
-              {puedeVerPedidos && (
-                <Link to="/pedidos" className="text-xs text-muted-foreground hover:text-foreground">
-                  Ver todos
-                </Link>
-              )}
-            </div>
-            {datos.recientes.length === 0 ? (
-              <Vacio titulo="Todavia no hay pedidos" />
-            ) : (
-              <Tabla
-                columnas={columnas}
-                filas={datos.recientes}
-                clave={(p) => p.id}
-                onClickFila={puedeVerPedidos ? (p) => setModal({ id: p.id }) : undefined}
-              />
-            )}
-          </div>
-
           {esAdmin && temporadas.length > 0 && (
             <div>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -319,6 +298,27 @@ export default function Dashboard() {
               )}
             </div>
           )}
+
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-foreground">Ultimos pedidos</h2>
+              {puedeVerPedidos && (
+                <Link to="/pedidos" className="text-xs text-muted-foreground hover:text-foreground">
+                  Ver todos
+                </Link>
+              )}
+            </div>
+            {datos.recientes.length === 0 ? (
+              <Vacio titulo="Todavia no hay pedidos" />
+            ) : (
+              <Tabla
+                columnas={columnas}
+                filas={datos.recientes}
+                clave={(p) => p.id}
+                onClickFila={puedeVerPedidos ? (p) => setModal({ id: p.id }) : undefined}
+              />
+            )}
+          </div>
         </div>
       )}
 
