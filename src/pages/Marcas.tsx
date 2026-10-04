@@ -21,8 +21,8 @@ const COLUMNAS_EXPORT: Columna<Marca>[] = [
 ]
 
 /**
- * Catalogo de marcas. Los permisos son los de productos: la importacion de
- * productos solo acepta marcas registradas aca.
+ * Catalogo de marcas. La importacion de productos solo acepta marcas
+ * registradas aca.
  */
 export default function Marcas() {
   const { can } = usePermisos()
@@ -105,7 +105,7 @@ export default function Marcas() {
         }
         acciones={
           <>
-            {can('can_create_products') && (
+            {can('can_create_brands') && (
               <Button onClick={() => setEdicion('nueva')}>
                 <Plus /> Nuevo
               </Button>
@@ -126,8 +126,8 @@ export default function Marcas() {
 
       <MarcaModal
         valor={edicion}
-        puedeEditar={can('can_edit_products')}
-        puedeEliminar={can('can_delete_products')}
+        puedeEditar={can('can_edit_brands')}
+        puedeEliminar={can('can_delete_brands')}
         onCerrar={() => setEdicion(null)}
         onGuardado={() => {
           setEdicion(null)

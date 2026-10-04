@@ -4,6 +4,7 @@ const FILAS: { modulo: string; ver?: PermisoKey; crear?: PermisoKey; editar?: Pe
   { modulo: 'Pedidos', ver: 'can_view_orders', crear: 'can_create_orders', editar: 'can_edit_orders', borrar: 'can_delete_orders' },
   { modulo: 'Clientes', ver: 'can_view_clients', crear: 'can_create_clients', editar: 'can_edit_clients', borrar: 'can_delete_clients' },
   { modulo: 'Productos', ver: 'can_view_products', crear: 'can_create_products', editar: 'can_edit_products', borrar: 'can_delete_products' },
+  { modulo: 'Marcas', ver: 'can_view_brands', crear: 'can_create_brands', editar: 'can_edit_brands', borrar: 'can_delete_brands' },
   { modulo: 'Proveedores', ver: 'can_view_providers', crear: 'can_create_providers', editar: 'can_edit_providers', borrar: 'can_delete_providers' },
   { modulo: 'Reportes', ver: 'can_view_reports' },
 ]
