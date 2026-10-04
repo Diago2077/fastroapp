@@ -7,7 +7,7 @@ import { Field, Input, Select } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
 import { getConfig, ordenarTallas } from '@/lib/config'
 import { mensajeError } from '@/lib/db'
-import type { Producto, Proveedor } from '@/lib/database.types'
+import type { Marca, Producto, Proveedor } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 interface FilaTalla {
@@ -60,11 +60,23 @@ export function ProductoForm({
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [marca, setMarca] = useState('')
+  const [marcas, setMarcas] = useState<Marca[]>([])
   const [proveedor, setProveedor] = useState('')
   const [temporada, setTemporada] = useState('')
   const [tallas, setTallas] = useState<FilaTalla[]>([{ size: '', sale: '', cost: '' }])
   const [colores, setColores] = useState<string[]>([])
   const [nuevoColor, setNuevoColor] = useState('')
+
+  // Las marcas se eligen del catalogo (vista Marcas)
+  useEffect(() => {
+    if (!abierto) return
+    void supabase
+      .from('brands')
+      .select('*')
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => setMarcas((data ?? []) as Marca[]))
+  }, [abierto])
 
   useEffect(() => {
     if (!abierto) return
@@ -133,6 +145,8 @@ export function ProductoForm({
   async function guardar() {
     setError(null)
     if (!codigo.trim() || !descripcion.trim()) return setError('Codigo y descripcion son obligatorios.')
+    if (!marca) return setError('Elegi la marca (si no existe, registrala primero en Marcas).')
+    if (!proveedor) return setError('Elegi el proveedor (si no existe, registralo primero en Proveedores).')
     const talles = new Map<string, FilaTalla>()
     for (const t of tallasValidas) talles.set(t.size.trim(), { ...t, size: t.size.trim() })
     if (talles.size !== tallasValidas.length) return setError('Hay tallas repetidas.')
@@ -148,8 +162,8 @@ export function ProductoForm({
       const datos = {
         code: codigo.trim(),
         description: descripcion.trim(),
-        brand: marca.trim() || null,
-        provider_id: proveedor || null,
+        brand: marca,
+        provider_id: proveedor,
         season: temporada.trim() || null,
       }
       let id = productoId
@@ -233,12 +247,21 @@ export function ProductoForm({
             <Field label="Descripcion *">
               <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
             </Field>
-            <Field label="Marca">
-              <Input value={marca} onChange={(e) => setMarca(e.target.value)} />
+            <Field label="Marca *">
+              <Select value={marca} onChange={(e) => setMarca(e.target.value)}>
+                <option value="">Elegir marca…</option>
+                {/* Una marca que ya no esta en el catalogo (dada de baja) se conserva hasta que se cambie */}
+                {marca && !marcas.some((m) => m.name === marca) && <option value={marca}>{marca}</option>}
+                {marcas.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
             </Field>
-            <Field label="Proveedor">
+            <Field label="Proveedor *">
               <Select value={proveedor} onChange={(e) => setProveedor(e.target.value)}>
-                <option value="">Sin proveedor</option>
+                <option value="">Elegir proveedor…</option>
                 {proveedores.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

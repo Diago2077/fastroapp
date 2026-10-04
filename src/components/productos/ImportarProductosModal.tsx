@@ -26,6 +26,12 @@ interface ProductoImport {
   variantes: Map<string, VarianteImport>
 }
 
+/** Problema que impide importar: el archivo se corrige y se vuelve a subir. */
+interface ErrorImport {
+  titulo: string
+  detalle: string
+}
+
 interface Conflicto {
   code: string
   marcaActual: string
@@ -41,7 +47,9 @@ const lotes = <T,>(arr: T[], n = 400): T[][] =>
  *
  *  · Un codigo que ya existe con OTRA marca se avisa: se omite salvo que se
  *    tilde "reemplazar igual".
- *  · Los proveedores que no existen se crean por nombre.
+ *  · Marca y Proveedor son obligatorios y tienen que estar registrados (vistas
+ *    Marcas y Proveedores); si falta alguno no se importa nada y se lista que
+ *    corregir. Se escribe el nombre tal como esta registrado.
  *  · Las variantes de un producto importado quedan EXACTAMENTE las del
  *    archivo: las que no figuran se eliminan.
  *  · El costo solo se importa con `can_see_cost`.
@@ -60,6 +68,7 @@ export function ImportarProductosModal({
   const [productos, setProductos] = useState<ProductoImport[]>([])
   const [conflictos, setConflictos] = useState<Conflicto[]>([])
   const [reemplazar, setReemplazar] = useState(false)
+  const [errores, setErrores] = useState<ErrorImport[]>([])
   const [omitidas, setOmitidas] = useState(0)
   const [leyendo, setLeyendo] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -70,6 +79,7 @@ export function ImportarProductosModal({
     if (!abierto) return
     setProductos([])
     setConflictos([])
+    setErrores([])
     setReemplazar(false)
     setOmitidas(0)
     setError(null)
@@ -78,6 +88,7 @@ export function ImportarProductosModal({
   async function leer(archivo: File) {
     setLeyendo(true)
     setError(null)
+    setErrores([])
     try {
       const crudas = await leerHoja(archivo)
       const porCodigo = new Map<string, ProductoImport>()
@@ -94,7 +105,11 @@ export function ImportarProductosModal({
           continue
         }
         let p = porCodigo.get(code)
-        if (!p) {
+        if (p) {
+          // Si la primera fila no traia marca o proveedor y otra si, se toma la que esta
+          p.brand ||= campo(r, ['marca', 'brand'])
+          p.provider ||= campo(r, ['proveedor', 'fabrica', 'provider'])
+        } else {
           p = {
             code,
             description,
@@ -109,6 +124,42 @@ export function ImportarProductosModal({
         p.variantes.set(`${color}\u0000${size}`, { color, size, sale, cost: Number.isNaN(costo) ? null : costo })
       }
       const lista = [...porCodigo.values()]
+
+      // Marca y proveedor: obligatorios y ya registrados (se usa el nombre registrado)
+      const [marcasReg, proveedoresReg] = await Promise.all([
+        traerTodo<{ name: string }>(() => supabase.from('brands').select('name').eq('active', true).order('id')),
+        traerTodo<{ name: string }>(() => supabase.from('providers').select('name').eq('active', true).order('id')),
+      ])
+      const nombreMarca = new Map(marcasReg.map((m) => [normalizar(m.name), m.name]))
+      const nombreProveedor = new Map(proveedoresReg.map((p) => [normalizar(p.name), p.name]))
+      const sinMarca: string[] = []
+      const sinProveedor: string[] = []
+      const marcasNuevas = new Set<string>()
+      const proveedoresNuevos = new Set<string>()
+      for (const p of lista) {
+        if (!p.brand) sinMarca.push(p.code)
+        else if (nombreMarca.has(normalizar(p.brand))) p.brand = nombreMarca.get(normalizar(p.brand))!
+        else marcasNuevas.add(p.brand)
+        if (!p.provider) sinProveedor.push(p.code)
+        else if (nombreProveedor.has(normalizar(p.provider))) p.provider = nombreProveedor.get(normalizar(p.provider))!
+        else proveedoresNuevos.add(p.provider)
+      }
+      const resumen = (xs: string[]) => (xs.length > 8 ? `${xs.slice(0, 8).join(', ')} y ${xs.length - 8} mas` : xs.join(', '))
+      const problemas: ErrorImport[] = []
+      if (sinMarca.length) problemas.push({ titulo: `${sinMarca.length} producto(s) sin Marca`, detalle: `Codigos: ${resumen(sinMarca)}` })
+      if (sinProveedor.length)
+        problemas.push({ titulo: `${sinProveedor.length} producto(s) sin Proveedor`, detalle: `Codigos: ${resumen(sinProveedor)}` })
+      if (marcasNuevas.size)
+        problemas.push({
+          titulo: `${marcasNuevas.size} marca(s) no registrada(s)`,
+          detalle: `${resumen([...marcasNuevas])}. Registralas primero en Marcas.`,
+        })
+      if (proveedoresNuevos.size)
+        problemas.push({
+          titulo: `${proveedoresNuevos.size} proveedor(es) no registrado(s)`,
+          detalle: `${resumen([...proveedoresNuevos])}. Registralos primero en Proveedores.`,
+        })
+      setErrores(problemas)
 
       // Codigos existentes con otra marca
       const existentes = await traerTodo<{ code: string; brand: string | null }>(() =>
@@ -139,17 +190,11 @@ export function ImportarProductosModal({
       const omitir = new Set(reemplazar ? [] : conflictos.map((c) => c.code))
       const aImportar = productos.filter((p) => !omitir.has(p.code))
 
-      // Proveedores: los que faltan se crean
+      // Proveedores: ya validados al leer el archivo (existen y estan activos)
       const proveedores = await traerTodo<{ id: string; name: string }>(() =>
-        supabase.from('providers').select('id, name').order('id'),
+        supabase.from('providers').select('id, name').eq('active', true).order('id'),
       )
       const idProveedor = new Map(proveedores.map((p) => [normalizar(p.name), p.id]))
-      const faltan = [...new Set(aImportar.map((p) => p.provider).filter((n) => n && !idProveedor.has(normalizar(n))))]
-      if (faltan.length) {
-        const { data, error: err } = await supabase.from('providers').insert(faltan.map((name) => ({ name }))).select('id, name')
-        if (err) throw err
-        for (const p of data ?? []) idProveedor.set(normalizar(p.name as string), p.id as string)
-      }
 
       // Productos existentes: lo que el archivo no trae se conserva
       const previos = await traerTodo<{ id: string; code: string; brand: string | null; provider_id: string | null; season: string | null }>(
@@ -162,8 +207,8 @@ export function ImportarProductosModal({
         return {
           code: p.code,
           description: p.description,
-          brand: p.brand || previo?.brand || null,
-          provider_id: (p.provider && idProveedor.get(normalizar(p.provider))) || previo?.provider_id || null,
+          brand: p.brand,
+          provider_id: idProveedor.get(normalizar(p.provider)) ?? null,
           season: p.season || previo?.season || null,
           active: true,
         }
@@ -232,13 +277,13 @@ export function ImportarProductosModal({
     setGuardando(false)
   }
 
-  const cantidad = productos.length - (reemplazar ? 0 : conflictos.length)
+  const cantidad = errores.length > 0 ? 0 : productos.length - (reemplazar ? 0 : conflictos.length)
 
   return (
     <Modal
       abierto={abierto}
       titulo="Importar productos"
-      descripcion="Una fila por variante. Obligatorias: Codigo, Descripcion, Color, Talla y PrecioVenta. Opcionales: Marca, Proveedor, Temporada y PrecioCosto."
+      descripcion="Una fila por variante. Obligatorias: Codigo, Descripcion, Marca, Proveedor, Color, Talla y PrecioVenta (la marca y el proveedor tienen que estar registrados). Opcionales: Temporada y PrecioCosto."
       onCerrar={onCerrar}
       ancho="max-w-2xl"
       footer={
@@ -290,6 +335,19 @@ export function ImportarProductosModal({
           <Upload className="size-5" />
           {leyendo ? 'Leyendo…' : 'Toca para elegir un archivo o arrastralo aca'}
         </button>
+
+        {errores.length > 0 && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+            <p className="mb-2 font-medium text-foreground">No se puede importar: corregi el archivo y volve a subirlo.</p>
+            <ul className="space-y-1 text-muted-foreground">
+              {errores.map((e) => (
+                <li key={e.titulo}>
+                  <span className="font-medium text-foreground">{e.titulo}.</span> {e.detalle}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {productos.length > 0 && (
           <div className="space-y-3">

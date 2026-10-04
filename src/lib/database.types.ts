@@ -93,6 +93,14 @@ export interface Cliente {
   updated_at: string
 }
 
+export interface Marca {
+  id: string
+  name: string
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Proveedor {
   id: string
   name: string

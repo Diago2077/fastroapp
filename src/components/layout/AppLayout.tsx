@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingCart,
   Store,
+  Tag,
   UserRound,
   Users,
 } from 'lucide-react'
@@ -49,6 +50,7 @@ const NAV: ItemNav[] = [
   { to: '/pedidos', label: 'Pedidos', icono: ShoppingCart, permiso: 'can_view_orders', principal: true },
   { to: '/productos', label: 'Productos', icono: Package, permiso: 'can_view_products', principal: true },
   { to: '/clientes', label: 'Clientes', icono: Store, permiso: 'can_view_clients', principal: true },
+  { to: '/marcas', label: 'Marcas', icono: Tag, permiso: 'can_view_products' },
   { to: '/proveedores', label: 'Proveedores', icono: Factory, permiso: 'can_view_providers' },
   { to: '/reportes', label: 'Reportes', icono: BarChart3, permiso: 'can_view_reports' },
   { to: '/usuarios', label: 'Usuarios', icono: Users, permiso: 'admin' },
