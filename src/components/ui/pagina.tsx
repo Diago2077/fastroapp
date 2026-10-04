@@ -7,11 +7,26 @@ export function EncabezadoPagina({
   titulo,
   descripcion,
   acciones,
+  buscador,
 }: {
   titulo: string
   descripcion?: string
   acciones?: ReactNode
+  /** Buscador: en escritorio va al lado de las acciones (a su izquierda); en celular baja a su propia fila. */
+  buscador?: ReactNode
 }) {
+  if (buscador) {
+    return (
+      <div className="mb-5 grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-4 sm:grid-cols-[1fr_auto_auto]">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">{titulo}</h1>
+          {descripcion && <p className="text-sm text-muted-foreground">{descripcion}</p>}
+        </div>
+        <div className="order-3 col-span-2 sm:order-2 sm:col-span-1 sm:w-80 [&>div]:max-w-none">{buscador}</div>
+        {acciones && <div className="order-2 flex items-center gap-2 sm:order-3">{acciones}</div>}
+      </div>
+    )
+  }
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>

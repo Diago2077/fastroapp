@@ -217,19 +217,8 @@ export default function Pedidos() {
       <EncabezadoPagina
         titulo="Pedidos"
         descripcion={esAdmin ? 'Todos los pedidos.' : 'Tus pedidos.'}
-        acciones={
-          <>
-            {can('can_create_orders') && (
-              <Button onClick={() => setModal({ id: null })}>
-                <Plus /> Nuevo
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador
+        buscador={
+          <Buscador
           valor={busqueda}
           onChange={setBusqueda}
           placeholder="Buscar por N° de pedido o cliente…"
@@ -281,7 +270,17 @@ export default function Pedidos() {
             </PanelFiltros>
           }
         />
-      </div>
+        }
+        acciones={
+          <>
+            {can('can_create_orders') && (
+              <Button onClick={() => setModal({ id: null })}>
+                <Plus /> Nuevo
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {cargando ? (
         <Cargando />
