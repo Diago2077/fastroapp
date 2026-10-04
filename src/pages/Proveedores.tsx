@@ -6,6 +6,7 @@ import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { Field, Input } from '@/components/ui/field'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
+import { PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { mensajeError, traerTodo } from '@/lib/db'
@@ -62,28 +63,53 @@ export default function Proveedores() {
       <EncabezadoPagina
         titulo="Proveedores"
         descripcion="Las fabricas a las que se les hacen los pedidos."
-        acciones={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportarPDF({ titulo: 'Proveedores', columnas: COLUMNAS_EXPORT, filas: filtradas, archivo: 'proveedores.pdf' })
-              }
-            >
-              <FileDown /> PDF
-            </Button>
-            {can('can_export_excel') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  exportarExcel({ hoja: 'Proveedores', columnas: COLUMNAS_EXPORT, filas: filtradas, archivo: 'proveedores.xlsx' })
+        buscador={
+          <Buscador
+            valor={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar proveedor…"
+            accion={
+              <PanelFiltros
+                soloIcono
+                activos={0}
+                onLimpiar={() => undefined}
+                acciones={
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">Exportar lo que se ve</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={filtradas.length === 0}
+                        onClick={() =>
+                          exportarPDF({ titulo: 'Proveedores', columnas: COLUMNAS_EXPORT, filas: filtradas, archivo: 'proveedores.pdf' })
+                        }
+                      >
+                        <FileDown /> PDF
+                      </Button>
+                      {can('can_export_excel') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={filtradas.length === 0}
+                          onClick={() =>
+                            exportarExcel({ hoja: 'Proveedores', columnas: COLUMNAS_EXPORT, filas: filtradas, archivo: 'proveedores.xlsx' })
+                          }
+                        >
+                          <FileSpreadsheet /> Excel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 }
               >
-                <FileSpreadsheet /> Excel
-              </Button>
-            )}
+                {null}
+              </PanelFiltros>
+            }
+          />
+        }
+        acciones={
+          <>
             {can('can_create_providers') && (
               <Button onClick={() => setEdicion('nuevo')}>
                 <Plus /> Nuevo

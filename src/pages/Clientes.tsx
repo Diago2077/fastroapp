@@ -96,19 +96,8 @@ export default function Clientes() {
       <EncabezadoPagina
         titulo="Clientes"
         descripcion={`${filas.length} clientes activos`}
-        acciones={
-          <>
-            {can('can_create_clients') && (
-              <Button onClick={() => setEdicion('nuevo')}>
-                <Plus /> Nuevo
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador
+        buscador={
+          <Buscador
           valor={busqueda}
           onChange={setBusqueda}
           placeholder="Buscar por codigo, nombre, tienda o RUC…"
@@ -149,7 +138,17 @@ export default function Clientes() {
             </PanelFiltros>
           }
         />
-      </div>
+        }
+        acciones={
+          <>
+            {can('can_create_clients') && (
+              <Button onClick={() => setEdicion('nuevo')}>
+                <Plus /> Nuevo
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {cargando ? (
         <Cargando />

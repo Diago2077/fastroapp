@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { ConfirmModal } from '@/components/ui/modal'
-import { Buscador } from '@/components/ui/pagina'
+import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
 import { OpcionUnica, PanelFiltros } from '@/components/ui/panel-filtros'
 import {
   CambiarPasswordModal,
@@ -68,21 +68,12 @@ export default function Usuarios() {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Usuarios</h1>
-          <p className="text-sm text-muted-foreground">
-            Quienes tienen acceso al sistema y con que rol.
-          </p>
-        </div>
-        <Button onClick={() => setModalNuevo(true)}>
-          <Plus /> Nuevo
-        </Button>
-      </div>
-
-      {data.length > 0 && (
-        <div className="mb-4">
-          <Buscador
+      <EncabezadoPagina
+        titulo="Usuarios"
+        descripcion="Quienes tienen acceso al sistema y con que rol."
+        buscador={
+          data.length > 0 ? (
+            <Buscador
             valor={busqueda}
             onChange={setBusqueda}
             placeholder="Buscar por nombre o email…"
@@ -120,8 +111,14 @@ export default function Usuarios() {
               </PanelFiltros>
             }
           />
-        </div>
-      )}
+          ) : undefined
+        }
+        acciones={
+          <Button onClick={() => setModalNuevo(true)}>
+            <Plus /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <Cargando />

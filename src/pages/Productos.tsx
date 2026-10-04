@@ -144,19 +144,8 @@ export default function Productos() {
       <EncabezadoPagina
         titulo="Productos"
         descripcion={`${productos.length} productos activos`}
-        acciones={
-          <>
-            {can('can_create_products') && (
-              <Button onClick={() => setForm({ id: null })}>
-                <Plus /> Nuevo
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Buscador
+        buscador={
+          <Buscador
           valor={busqueda}
           onChange={setBusqueda}
           placeholder="Buscar por codigo o descripcion…"
@@ -213,7 +202,17 @@ export default function Productos() {
             </PanelFiltros>
           }
         />
-      </div>
+        }
+        acciones={
+          <>
+            {can('can_create_products') && (
+              <Button onClick={() => setForm({ id: null })}>
+                <Plus /> Nuevo
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {cargando ? (
         <Cargando />
