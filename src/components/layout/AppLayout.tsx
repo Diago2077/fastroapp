@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingCart,
   Store,
+  UserRound,
   Users,
 } from 'lucide-react'
 import { useEffect, useState, type ComponentType } from 'react'
@@ -16,6 +17,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CambiarMiPasswordModal } from '@/components/cuenta/CambiarMiPasswordModal'
 import { Button } from '@/components/ui/button'
 import { Cargando } from '@/components/ui/estado'
+import { MenuAcciones } from '@/components/ui/menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuth } from '@/hooks/useAuth'
 import { usePermisos } from '@/hooks/usePermisos'
@@ -33,6 +35,8 @@ interface ItemNav {
   permiso: PermisoKey | 'admin' | 'todos'
   /** Aparece en la barra inferior del celular (el resto va en "Mas"). */
   principal?: boolean
+  /** Tiene su propio boton en la barra superior (engranaje): no se repite en los menus. */
+  enHeader?: boolean
 }
 
 /**
@@ -48,7 +52,7 @@ const NAV: ItemNav[] = [
   { to: '/proveedores', label: 'Proveedores', icono: Factory, permiso: 'can_view_providers' },
   { to: '/reportes', label: 'Reportes', icono: BarChart3, permiso: 'can_view_reports' },
   { to: '/usuarios', label: 'Usuarios', icono: Users, permiso: 'admin' },
-  { to: '/configuracion', label: 'Configuracion', icono: Settings, permiso: 'admin' },
+  { to: '/configuracion', label: 'Configuracion', icono: Settings, permiso: 'admin', enHeader: true },
 ]
 
 const MENSAJE_PROBLEMA = {
@@ -73,8 +77,9 @@ export default function AppLayout() {
   const links = NAV.filter((item) =>
     item.permiso === 'todos' ? true : item.permiso === 'admin' ? esAdmin : can(item.permiso),
   )
-  const principales = links.filter((l) => l.principal)
-  const secundarios = links.filter((l) => !l.principal)
+  const enMenus = links.filter((l) => !l.enHeader)
+  const principales = enMenus.filter((l) => l.principal)
+  const secundarios = enMenus.filter((l) => !l.principal)
 
   useEffect(() => {
     if (!loading && !user) navigate('/login', { replace: true })
@@ -126,7 +131,7 @@ export default function AppLayout() {
           </span>
 
           <nav className="ml-2 hidden items-center gap-1 md:flex">
-            {links.map((item) => (
+            {enMenus.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -153,12 +158,36 @@ export default function AppLayout() {
               </p>
             </div>
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={() => setModalPassword(true)} title="Cambiar mi contrasena">
-              <KeyRound />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} title="Cerrar sesion">
-              <LogOut />
-            </Button>
+            {esAdmin && (
+              <NavLink
+                to="/configuracion"
+                title="Configuracion"
+                aria-label="Configuracion"
+                className={({ isActive }) =>
+                  cn(
+                    'flex size-9 items-center justify-center rounded-md transition-colors hover:bg-accent [&_svg]:size-4',
+                    isActive ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )
+                }
+              >
+                <Settings />
+              </NavLink>
+            )}
+            <MenuAcciones
+              abajo
+              etiqueta="Mi cuenta"
+              icono={<UserRound />}
+              encabezado={
+                <>
+                  <p className="truncate text-sm font-medium text-foreground">{usuario?.nombre}</p>
+                  <p className="truncate text-xs text-muted-foreground">{rol ? ROL_LABEL[rol] : usuario?.email}</p>
+                </>
+              }
+              items={[
+                { etiqueta: 'Cambiar mi contrasena', icono: <KeyRound />, onClick: () => setModalPassword(true) },
+                { etiqueta: 'Cerrar sesion', icono: <LogOut />, onClick: signOut, separador: true },
+              ]}
+            />
           </div>
         </div>
       </header>

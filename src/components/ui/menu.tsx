@@ -18,7 +18,22 @@ export interface ItemMenu {
  * los modales). Cierra al elegir, al tocar afuera y con Escape; el Escape no
  * llega al modal de abajo.
  */
-export function MenuAcciones({ etiqueta, items }: { etiqueta: string; items: ItemMenu[] }) {
+export function MenuAcciones({
+  etiqueta,
+  items,
+  icono,
+  abajo = false,
+  encabezado,
+}: {
+  etiqueta: string
+  items: ItemMenu[]
+  /** Si viene, el disparador es solo este icono (con `etiqueta` como nombre accesible). */
+  icono?: ReactNode
+  /** Abre hacia abajo y alineado a la derecha (para la barra superior). */
+  abajo?: boolean
+  /** Contenido fijo arriba de las opciones (p. ej. nombre y rol). */
+  encabezado?: ReactNode
+}) {
   const [abierto, setAbierto] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -44,15 +59,33 @@ export function MenuAcciones({ etiqueta, items }: { etiqueta: string; items: Ite
 
   return (
     <div ref={ref} className="relative">
-      <Button variant="outline" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((a) => !a)}>
-        {etiqueta}
-        <ChevronUp className={cn('transition-transform', !abierto && 'rotate-180')} />
-      </Button>
+      {icono ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-haspopup="menu"
+          aria-expanded={abierto}
+          aria-label={etiqueta}
+          title={etiqueta}
+          onClick={() => setAbierto((a) => !a)}
+        >
+          {icono}
+        </Button>
+      ) : (
+        <Button variant="outline" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((a) => !a)}>
+          {etiqueta}
+          <ChevronUp className={cn('transition-transform', !abierto && 'rotate-180')} />
+        </Button>
+      )}
       {abierto && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 z-20 mb-2 min-w-52 rounded-md border border-border bg-card py-1 shadow-lg"
+          className={cn(
+            'absolute z-50 min-w-56 rounded-md border border-border bg-card py-1 shadow-lg',
+            abajo ? 'right-0 top-full mt-2' : 'bottom-full left-0 z-20 mb-2',
+          )}
         >
+          {encabezado && <div className="border-b border-border px-3 py-2">{encabezado}</div>}
           {items.map((item) => (
             <div key={item.etiqueta}>
               {item.separador && <div className="my-1 border-t border-border" />}
