@@ -13,7 +13,7 @@ import { useConfig } from '@/lib/config'
 import { ESTADO_LABEL } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
 import { costoDe, SELECT_STATS, ventaDe, vigentes, type PedidoStats } from '@/lib/estadisticas'
-import { formatFecha, formatGs, formatGsPdf, formatUsd, hoyISO } from '@/lib/format'
+import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO } from '@/lib/format'
 import { TONO_ESTADO } from '@/lib/pedidos'
 import { supabase } from '@/lib/supabase'
 
@@ -159,9 +159,9 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-            <Indicador etiqueta="Ventas Totales" valor={formatGs(datos.ventas)} icono={<span className="text-xs font-bold">Gs</span>} />
+            <Indicador etiqueta="Ventas Totales" valor={formatNumero(datos.ventas)} icono={<span className="text-xs font-bold">Gs</span>} />
             {verCosto && (
-              <Indicador etiqueta="Total Ventas en Costo" valor={formatUsd(datos.costo)} icono={<span className="text-xs font-bold">US$</span>} />
+              <Indicador etiqueta="Total Ventas en Costo" valor={formatNumero(datos.costo)} icono={<span className="text-xs font-bold">US$</span>} />
             )}
             <Indicador etiqueta="Pedidos Abiertos" valor={String(datos.abiertos)} icono={<FileText className="size-4" />} />
             <Indicador etiqueta="Pedidos Cerrados" valor={String(datos.cerrados)} icono={<ClipboardCheck className="size-4" />} />
