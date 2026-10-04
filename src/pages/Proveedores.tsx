@@ -119,10 +119,6 @@ export default function Proveedores() {
         }
       />
 
-      <div className="mb-4">
-        <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar proveedor…" />
-      </div>
-
       {cargando ? (
         <Cargando />
       ) : error ? (
