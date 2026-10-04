@@ -64,7 +64,7 @@ export default function Marcas() {
     <div>
       <EncabezadoPagina
         titulo="Marcas"
-        descripcion="Las marcas de los productos. Para importar productos, la marca tiene que estar registrada aca."
+        descripcion="Las marcas de los productos."
         buscador={
           <Buscador
             valor={busqueda}

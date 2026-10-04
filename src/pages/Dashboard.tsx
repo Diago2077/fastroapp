@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileDown, FileSpreadsheet, FileText, Truck } from 'lucide-react'
+import { ClipboardCheck, FileDown, FileText, Truck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { FichaCliente } from '@/components/clientes/FichaCliente'
@@ -14,7 +14,7 @@ import { usePermisos } from '@/hooks/usePermisos'
 import { useConfig } from '@/lib/config'
 import { ESTADO_LABEL, type Cliente } from '@/lib/database.types'
 import { traerTodo } from '@/lib/db'
-import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
+import { exportarPDF, type Columna } from '@/lib/exportar'
 import { costoDe, SELECT_STATS, ventaDe, vigentes, type PedidoStats } from '@/lib/estadisticas'
 import { formatFecha, formatGs, formatGsPdf, formatNumero, formatUsd, hoyISO } from '@/lib/format'
 import { TONO_ESTADO } from '@/lib/pedidos'
@@ -137,12 +137,13 @@ export default function Dashboard() {
     },
   ]
 
-  const exportarSinPedidos = (formato: 'pdf' | 'excel') => {
-    const titulo = `Clientes sin pedidos · ${temporadaSel}`
-    return formato === 'pdf'
-      ? exportarPDF({ titulo, columnas: COLUMNAS_SIN_PEDIDOS, filas: sinPedidos, archivo: `clientes-sin-pedidos-${temporadaSel}.pdf` })
-      : exportarExcel({ hoja: 'Sin pedidos', columnas: COLUMNAS_SIN_PEDIDOS, filas: sinPedidos, archivo: `clientes-sin-pedidos-${temporadaSel}.xlsx` })
-  }
+  const exportarSinPedidos = () =>
+    exportarPDF({
+      titulo: `Clientes sin pedidos · ${temporadaSel}`,
+      columnas: COLUMNAS_SIN_PEDIDOS,
+      filas: sinPedidos,
+      archivo: `clientes-sin-pedidos-${temporadaSel}.pdf`,
+    })
 
   async function descargarPDF() {
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
@@ -264,14 +265,9 @@ export default function Dashboard() {
                       </option>
                     ))}
                   </Select>
-                  <Button variant="outline" size="sm" disabled={sinPedidos.length === 0} onClick={() => exportarSinPedidos('pdf')}>
+                  <Button variant="outline" size="sm" disabled={sinPedidos.length === 0} onClick={exportarSinPedidos}>
                     <FileDown /> PDF
                   </Button>
-                  {can('can_export_excel') && (
-                    <Button variant="outline" size="sm" disabled={sinPedidos.length === 0} onClick={() => exportarSinPedidos('excel')}>
-                      <FileSpreadsheet /> Excel
-                    </Button>
-                  )}
                 </div>
               </div>
               {sinPedidos.length === 0 ? (
