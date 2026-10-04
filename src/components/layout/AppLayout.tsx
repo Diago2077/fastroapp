@@ -127,9 +127,10 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background pb-16 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-border bg-card/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <span className="flex min-w-0 items-center gap-2">
+          {/* Si el nombre no entra al lado del logo, pasa a una segunda linea y queda oculto (no se corta letra por letra) */}
+          <span className="flex h-7 min-w-0 flex-wrap content-start items-center gap-x-2 overflow-hidden">
             <img src="/logo.svg" alt="" className="size-7 shrink-0 rounded-md" />
-            <span className="truncate text-sm font-semibold text-foreground">{APP_NOMBRE}</span>
+            <span className="whitespace-nowrap text-sm font-semibold leading-7 text-foreground">{APP_NOMBRE}</span>
           </span>
 
           <nav className="ml-2 hidden items-center gap-1 md:flex">
