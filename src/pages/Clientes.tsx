@@ -1,12 +1,13 @@
-import { FileDown, FileSpreadsheet, Plus, Trash2, Upload } from 'lucide-react'
+import { FileDown, FileSpreadsheet, Plus, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
-import { Field, Input } from '@/components/ui/field'
-import { ConfirmModal, Modal } from '@/components/ui/modal'
+import { Field, Input, Select } from '@/components/ui/field'
+import { Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
-import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
+import { ListaFiltro, OpcionUnica, PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { mensajeError, traerTodo } from '@/lib/db'
@@ -24,6 +25,7 @@ const COLUMNAS_EXPORT: Columna<Cliente>[] = [
   { header: 'Telefono', valor: (c) => c.phone ?? '', ancho: 16 },
   { header: 'Ciudad', valor: (c) => c.city ?? '', ancho: 18 },
   { header: 'Email', valor: (c) => c.email ?? '', ancho: 26 },
+  { header: 'Estado', valor: (c) => (c.active ? 'Activo' : 'Inactivo'), ancho: 12 },
 ]
 
 export default function Clientes() {
@@ -34,7 +36,7 @@ export default function Clientes() {
   const [busqueda, setBusqueda] = useState('')
   const [ciudades, setCiudades] = useState<string[]>([])
   const [edicion, setEdicion] = useState<Cliente | 'nuevo' | null>(null)
-  const [aEliminar, setAEliminar] = useState<Cliente | null>(null)
+  const [estado, setEstado] = useState<'activo' | 'inactivo' | ''>('activo')
   const [importando, setImportando] = useState(false)
 
   const cargar = useCallback(async () => {
@@ -45,7 +47,6 @@ export default function Clientes() {
           supabase
             .from('clients')
             .select('*')
-            .eq('active', true)
             .order('code', { ascending: false, nullsFirst: false })
             .order('id'),
         ),
@@ -73,16 +74,23 @@ export default function Clientes() {
     const q = normalizar(busqueda)
     return filas.filter((c) => {
       if (ciudades.length && !ciudades.includes(c.city?.trim() ?? '')) return false
+      if (estado && (c.active ? 'activo' : 'inactivo') !== estado) return false
       if (!q) return true
       return [String(c.code ?? ''), c.name, c.store_name ?? '', c.ruc ?? ''].some((t) => normalizar(t).includes(q))
     })
-  }, [filas, busqueda, ciudades])
+  }, [filas, busqueda, ciudades, estado])
 
   const columnas: ColumnaTabla<Cliente>[] = [
     { id: 'code', header: 'Codigo', render: (c) => c.code ?? '—', orden: (c) => c.code },
     { id: 'name', header: 'Nombre', render: (c) => <span className="font-medium">{c.name}</span>, orden: (c) => c.name },
     { id: 'store', header: 'Tienda', render: (c) => c.store_name ?? '—', orden: (c) => c.store_name },
     { id: 'city', header: 'Ciudad', render: (c) => c.city ?? '—', orden: (c) => c.city },
+    {
+      id: 'estado',
+      header: 'Estado',
+      render: (c) => <Badge tono={c.active ? 'success' : 'neutral'}>{c.active ? 'Activo' : 'Inactivo'}</Badge>,
+      orden: (c) => (c.active ? 1 : 0),
+    },
   ]
 
   // Exporta lo que se esta viendo (filtrado), igual que Productos
@@ -95,7 +103,7 @@ export default function Clientes() {
     <div>
       <EncabezadoPagina
         titulo="Clientes"
-        descripcion={`${filas.length} clientes activos`}
+        descripcion={`${filas.filter((c) => c.active).length} clientes activos de ${filas.length}`}
         buscador={
           <Buscador
           valor={busqueda}
@@ -104,8 +112,11 @@ export default function Clientes() {
           accion={
             <PanelFiltros
               soloIcono
-              activos={ciudades.length > 0 ? 1 : 0}
-              onLimpiar={() => setCiudades([])}
+              activos={(ciudades.length > 0 ? 1 : 0) + (estado !== 'activo' ? 1 : 0)}
+              onLimpiar={() => {
+                setCiudades([])
+                setEstado('activo')
+              }}
               acciones={(cerrar) => (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground">Importar y exportar</p>
@@ -134,6 +145,17 @@ export default function Clientes() {
                 </div>
               )}
             >
+              <OpcionUnica
+                label="Estado"
+                porDefecto="activo"
+                valor={estado}
+                onChange={setEstado}
+                opciones={[
+                  { value: 'activo', label: 'Activos' },
+                  { value: 'inactivo', label: 'Inactivos' },
+                  { value: '', label: 'Todos' },
+                ]}
+              />
               <ListaFiltro label="Ciudad" todas="Todas las ciudades" plural="ciudades" opciones={opcionesCiudad} valor={ciudades} onChange={setCiudades} />
             </PanelFiltros>
           }
@@ -163,36 +185,10 @@ export default function Clientes() {
       <ClienteModal
         valor={edicion}
         puedeEditar={can('can_edit_clients')}
-        puedeEliminar={can('can_delete_clients')}
         onCerrar={() => setEdicion(null)}
         onGuardado={() => {
           setEdicion(null)
           void cargar()
-        }}
-        onEliminar={(c) => {
-          setEdicion(null)
-          setAEliminar(c)
-        }}
-      />
-
-      <ConfirmModal
-        abierto={aEliminar !== null}
-        titulo="Eliminar cliente"
-        mensaje={
-          <>
-            Se va a dar de baja a <strong>{aEliminar?.name}</strong>. Sus pedidos anteriores se conservan.
-          </>
-        }
-        onCancelar={() => setAEliminar(null)}
-        onConfirmar={async () => {
-          if (!aEliminar) return
-          const { error: err } = await supabase.from('clients').update({ active: false }).eq('id', aEliminar.id)
-          if (err) toast.error(mensajeError(err, 'No se pudo eliminar el cliente.'))
-          else {
-            toast.success('Cliente eliminado')
-            void cargar()
-          }
-          setAEliminar(null)
         }}
       />
 
@@ -213,20 +209,17 @@ const VACIO = { code: '', name: '', store_name: '', ruc: '', phone: '', city: ''
 function ClienteModal({
   valor,
   puedeEditar,
-  puedeEliminar,
   onCerrar,
   onGuardado,
-  onEliminar,
 }: {
   valor: Cliente | 'nuevo' | null
   puedeEditar: boolean
-  puedeEliminar: boolean
   onCerrar: () => void
   onGuardado: () => void
-  onEliminar: (c: Cliente) => void
 }) {
   const existente = valor && valor !== 'nuevo' ? valor : null
   const [f, setF] = useState(VACIO)
+  const [activo, setActivo] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const editable = valor === 'nuevo' || puedeEditar
@@ -246,6 +239,7 @@ function ClienteModal({
           }
         : VACIO,
     )
+    setActivo(existente?.active ?? true)
     setError(null)
   }, [valor, existente])
 
@@ -264,6 +258,7 @@ function ClienteModal({
       phone: f.phone.trim() || null,
       city: f.city.trim() || null,
       email: f.email.trim() || null,
+      active: activo,
     }
     const { error: err } = existente
       ? await supabase.from('clients').update(datos).eq('id', existente.id)
@@ -283,11 +278,6 @@ function ClienteModal({
       onCerrar={onCerrar}
       footer={
         <>
-          {existente && puedeEliminar && (
-            <Button variant="outline" className="mr-auto" onClick={() => onEliminar(existente)}>
-              <Trash2 className="text-destructive" /> Eliminar
-            </Button>
-          )}
           <Button variant="outline" onClick={onCerrar} disabled={guardando}>
             Cerrar
           </Button>
@@ -318,8 +308,14 @@ function ClienteModal({
         <Field label="Ciudad">
           <Input value={f.city} onChange={set('city')} disabled={!editable} />
         </Field>
-        <Field label="Email" className="sm:col-span-2">
+        <Field label="Email">
           <Input type="email" value={f.email} onChange={set('email')} disabled={!editable} />
+        </Field>
+        <Field label="Estado">
+          <Select value={activo ? 'activo' : 'inactivo'} onChange={(e) => setActivo(e.target.value === 'activo')} disabled={!editable}>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </Select>
         </Field>
       </div>
       {error && (

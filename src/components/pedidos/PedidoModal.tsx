@@ -152,6 +152,12 @@ export function PedidoModal({
         }
         const p = ped.data as PedidoCargado
         if (!duplicarDe) setPedido(p)
+        // Un pedido viejo puede ser de un cliente que ahora esta inactivo: se suma a la lista para que se vea
+        if (!duplicarDe && p.client_id && !(cli.data ?? []).some((c) => c.id === p.client_id)) {
+          const { data: cliente } = await supabase.from('clients').select('id, code, name, store_name').eq('id', p.client_id).maybeSingle()
+          if (!vivo) return
+          if (cliente) setClientes((prev) => [...prev, cliente as ClienteOpcion])
+        }
         inicial = {
           clientId: p.client_id ?? '',
           providerId: p.provider_id ?? '',
