@@ -64,7 +64,7 @@ export default function Marcas() {
     <div>
       <EncabezadoPagina
         titulo="Marcas"
-        descripcion="Las marcas de los productos."
+        descripcion={`${filas.length} ${filas.length === 1 ? 'marca activa' : 'marcas activas'}`}
         buscador={
           <Buscador
             valor={busqueda}
