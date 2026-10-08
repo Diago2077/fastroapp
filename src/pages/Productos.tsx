@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
-import { ListaFiltro, PanelFiltros, RangoFechas } from '@/components/ui/panel-filtros'
+import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { compararTallas, ordenarTallas } from '@/lib/config'
@@ -70,8 +70,7 @@ export default function Productos() {
   const [marcas, setMarcas] = useState<string[]>([])
   const [filtroProveedores, setFiltroProveedores] = useState<string[]>([])
   const [temporadas, setTemporadas] = useState<string[]>([])
-  const [desde, setDesde] = useState('')
-  const [hasta, setHasta] = useState('')
+  const [fechas, setFechas] = useState<string[]>([])
 
   const [detalle, setDetalle] = useState<ProductoLista | null>(null)
   const [form, setForm] = useState<{ id: string | null } | null>(null)
@@ -116,6 +115,10 @@ export default function Productos() {
       marcas: unicos(productos.map((p) => p.brand)),
       temporadas: unicos(productos.map((p) => p.season)),
       proveedores: proveedores.map((p) => ({ value: p.id, label: p.name })),
+      // Todas las fechas en que se crearon productos, la mas reciente primero
+      fechas: [...new Set(productos.map((p) => fechaLocalISO(p.created_at)))]
+        .sort((a, b) => b.localeCompare(a))
+        .map((d) => ({ value: d, label: formatFecha(d) })),
     }
   }, [productos, proveedores])
 
@@ -125,15 +128,11 @@ export default function Productos() {
       if (marcas.length && !marcas.includes(p.brand ?? '')) return false
       if (filtroProveedores.length && !filtroProveedores.includes(p.provider_id ?? '')) return false
       if (temporadas.length && !temporadas.includes(p.season ?? '')) return false
-      if (desde || hasta) {
-        const creado = fechaLocalISO(p.created_at)
-        if (desde && creado < desde) return false
-        if (hasta && creado > hasta) return false
-      }
+      if (fechas.length && !fechas.includes(fechaLocalISO(p.created_at))) return false
       return !q || normalizar(p.code).includes(q) || normalizar(p.description).includes(q)
     })
     return filasPorPrecio(filtrados)
-  }, [productos, busqueda, marcas, filtroProveedores, temporadas, desde, hasta])
+  }, [productos, busqueda, marcas, filtroProveedores, temporadas, fechas])
 
   // Cuantos codigos hay en la lista (una fila por precio: un codigo puede salir en varias)
   const cantidadCodigos = useMemo(() => new Set(filas.map((f) => f.producto.id)).size, [filas])
@@ -171,13 +170,12 @@ export default function Productos() {
           accion={
             <PanelFiltros
               soloIcono
-              activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length + (desde || hasta ? 1 : 0)}
+              activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length + (fechas.length > 0 ? 1 : 0)}
               onLimpiar={() => {
                 setMarcas([])
                 setFiltroProveedores([])
                 setTemporadas([])
-                setDesde('')
-                setHasta('')
+                setFechas([])
               }}
               acciones={(cerrar) => (
                 <div>
@@ -217,7 +215,7 @@ export default function Productos() {
                 </div>
               )}
             >
-              <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
+              <ListaFiltro label="Fecha de creacion" todas="Todas las fechas" plural="fechas" opciones={opciones.fechas} valor={fechas} onChange={setFechas} />
               <ListaFiltro label="Marca" todas="Todas las marcas" plural="marcas" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
               <ListaFiltro label="Proveedor" todas="Todos los proveedores" plural="proveedores" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
               <ListaFiltro label="Temporada" todas="Todas las temporadas" plural="temporadas" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
