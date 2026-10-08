@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorBox, Vacio } from '@/components/ui/estado'
 import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { Buscador, EncabezadoPagina } from '@/components/ui/pagina'
-import { ListaFiltro, PanelFiltros } from '@/components/ui/panel-filtros'
+import { ListaFiltro, PanelFiltros, RangoFechas } from '@/components/ui/panel-filtros'
 import { Tabla, type ColumnaTabla } from '@/components/ui/tabla'
 import { usePermisos } from '@/hooks/usePermisos'
 import { compararTallas, ordenarTallas } from '@/lib/config'
 import { mensajeError, traerTodo } from '@/lib/db'
 import type { Producto, Proveedor, Variante } from '@/lib/database.types'
 import { exportarExcel, exportarPDF, type Columna } from '@/lib/exportar'
-import { formatGs, normalizar } from '@/lib/format'
+import { fechaLocalISO, formatFecha, formatGs, normalizar } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 
 type VarianteLista = Pick<Variante, 'id' | 'color' | 'size' | 'sale_price'>
@@ -56,6 +56,7 @@ const COLUMNAS_EXPORT: Columna<FilaPrecio>[] = [
   { header: 'Descripcion', valor: (f) => f.producto.description, ancho: 36 },
   { header: 'Marca', valor: (f) => f.producto.brand ?? '', ancho: 16 },
   { header: 'Tallas', valor: (f) => f.tallas.join(' · '), ancho: 24 },
+  { header: 'Creado', valor: (f) => formatFecha(f.producto.created_at), ancho: 12 },
   { header: 'Precio Venta', valor: (f) => (f.precio === null ? '' : formatGs(f.precio)), ancho: 16 },
 ]
 
@@ -69,6 +70,8 @@ export default function Productos() {
   const [marcas, setMarcas] = useState<string[]>([])
   const [filtroProveedores, setFiltroProveedores] = useState<string[]>([])
   const [temporadas, setTemporadas] = useState<string[]>([])
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
 
   const [detalle, setDetalle] = useState<ProductoLista | null>(null)
   const [form, setForm] = useState<{ id: string | null } | null>(null)
@@ -122,16 +125,30 @@ export default function Productos() {
       if (marcas.length && !marcas.includes(p.brand ?? '')) return false
       if (filtroProveedores.length && !filtroProveedores.includes(p.provider_id ?? '')) return false
       if (temporadas.length && !temporadas.includes(p.season ?? '')) return false
+      if (desde || hasta) {
+        const creado = fechaLocalISO(p.created_at)
+        if (desde && creado < desde) return false
+        if (hasta && creado > hasta) return false
+      }
       return !q || normalizar(p.code).includes(q) || normalizar(p.description).includes(q)
     })
     return filasPorPrecio(filtrados)
-  }, [productos, busqueda, marcas, filtroProveedores, temporadas])
+  }, [productos, busqueda, marcas, filtroProveedores, temporadas, desde, hasta])
+
+  // Cuantos codigos hay en la lista (una fila por precio: un codigo puede salir en varias)
+  const cantidadCodigos = useMemo(() => new Set(filas.map((f) => f.producto.id)).size, [filas])
 
   const columnas: ColumnaTabla<FilaPrecio>[] = [
     { id: 'code', header: 'Codigo', render: (f) => <span className="font-medium">{f.producto.code}</span>, orden: (f) => f.producto.code },
     { id: 'desc', header: 'Descripcion', render: (f) => f.producto.description, orden: (f) => f.producto.description },
     { id: 'brand', header: 'Marca', render: (f) => f.producto.brand ?? '—', orden: (f) => f.producto.brand },
     { id: 'sizes', header: 'Tallas', render: (f) => f.tallas.join(' · ') || '—' },
+    {
+      id: 'creado',
+      header: 'Creado',
+      render: (f) => formatFecha(f.producto.created_at),
+      orden: (f) => f.producto.created_at,
+    },
     {
       id: 'price',
       header: 'Precio Venta',
@@ -154,11 +171,13 @@ export default function Productos() {
           accion={
             <PanelFiltros
               soloIcono
-              activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length}
+              activos={[marcas, filtroProveedores, temporadas].filter((v) => v.length > 0).length + (desde || hasta ? 1 : 0)}
               onLimpiar={() => {
                 setMarcas([])
                 setFiltroProveedores([])
                 setTemporadas([])
+                setDesde('')
+                setHasta('')
               }}
               acciones={(cerrar) => (
                 <div>
@@ -198,6 +217,7 @@ export default function Productos() {
                 </div>
               )}
             >
+              <RangoFechas label="Fecha de creacion" desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
               <ListaFiltro label="Marca" todas="Todas las marcas" plural="marcas" opciones={opciones.marcas} valor={marcas} onChange={setMarcas} />
               <ListaFiltro label="Proveedor" todas="Todos los proveedores" plural="proveedores" opciones={opciones.proveedores} valor={filtroProveedores} onChange={setFiltroProveedores} />
               <ListaFiltro label="Temporada" todas="Todas las temporadas" plural="temporadas" opciones={opciones.temporadas} valor={temporadas} onChange={setTemporadas} />
@@ -223,7 +243,20 @@ export default function Productos() {
       ) : filas.length === 0 ? (
         <Vacio titulo={productos.length === 0 ? 'Sin productos' : 'Sin resultados'} />
       ) : (
-        <Tabla ajustarAPantalla columnas={columnas} filas={filas} clave={(f) => f.clave} onClickFila={(f) => setDetalle(f.producto)} />
+        <Tabla
+          ajustarAPantalla
+          columnas={columnas}
+          filas={filas}
+          clave={(f) => f.clave}
+          onClickFila={(f) => setDetalle(f.producto)}
+          pie={
+            <tr>
+              <td className="px-4 py-2.5 text-xs text-muted-foreground" colSpan={columnas.length}>
+                {cantidadCodigos} {cantidadCodigos === 1 ? 'codigo' : 'codigos'}
+              </td>
+            </tr>
+          }
+        />
       )}
 
       <DetalleProducto
