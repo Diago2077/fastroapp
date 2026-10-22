@@ -249,9 +249,12 @@ export function ImportarProductosModal({
       const idsProducto = [...idPorCodigo.values()]
       const sobrantes: string[] = []
       for (const lote of lotes(idsProducto, 100)) {
-        const { data } = await supabase.from('product_variants').select('id, product_id, color, size').in('product_id', lote)
-        for (const v of data ?? []) {
-          if (!idVariante.has(`${v.product_id}\u0000${v.color}\u0000${v.size}`)) sobrantes.push(v.id as string)
+        // Paginado: 100 productos pueden tener mas de 1000 variantes y el servidor corta ahi
+        const existentes = await traerTodo<{ id: string; product_id: string; color: string; size: string }>(() =>
+          supabase.from('product_variants').select('id, product_id, color, size').in('product_id', lote).order('id'),
+        )
+        for (const v of existentes) {
+          if (!idVariante.has(`${v.product_id}\u0000${v.color}\u0000${v.size}`)) sobrantes.push(v.id)
         }
       }
       for (const lote of lotes(sobrantes, 100)) {
