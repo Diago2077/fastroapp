@@ -674,6 +674,7 @@ export function PedidoModal({
       <SelectorProductos
         abierto={selector || variantEditar !== null}
         proveedorId={form.providerId}
+        temporada={form.season}
         variantInicial={variantEditar}
         items={form.items}
         onCerrar={() => {

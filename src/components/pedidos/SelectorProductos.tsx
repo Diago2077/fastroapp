@@ -56,6 +56,7 @@ const etiquetaColores = (p: ProductoBusqueda) => {
 export function SelectorProductos({
   abierto,
   proveedorId,
+  temporada,
   variantInicial = null,
   items,
   onCerrar,
@@ -63,6 +64,8 @@ export function SelectorProductos({
 }: {
   abierto: boolean
   proveedorId: string
+  /** Temporada del pedido: solo se ofrecen productos de esa temporada. */
+  temporada: string
   /** Si viene, abre directo la grilla del producto al que pertenece esa variante. */
   variantInicial?: string | null
   items: ItemPedido[]
@@ -113,11 +116,13 @@ export function SelectorProductos({
     setBuscando(true)
     const t = setTimeout(async () => {
       const limpio = q.replace(/[%,()]/g, ' ')
-      const { data } = await supabase
+      let consulta = supabase
         .from('products')
         .select(SELECT_PRODUCTO)
         .eq('active', true)
         .eq('provider_id', proveedorId)
+      if (temporada.trim()) consulta = consulta.eq('season', temporada.trim())
+      const { data } = await consulta
         .or(`code.ilike.%${limpio}%,description.ilike.%${limpio}%`)
         .order('code')
         .limit(10)
@@ -125,7 +130,7 @@ export function SelectorProductos({
       setBuscando(false)
     }, 250)
     return () => clearTimeout(t)
-  }, [busqueda, abierto, producto, proveedorId])
+  }, [busqueda, abierto, producto, proveedorId, temporada])
 
   function elegir(p: ProductoBusqueda) {
     setProducto(p)
