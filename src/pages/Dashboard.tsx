@@ -86,9 +86,11 @@ export default function Dashboard() {
   }, [cargar])
 
   const datos = useMemo(() => {
+    // Indicadores y ultimos pedidos son de la temporada actual (Configuracion)
+    const deLaTemporada = temporadaActual ? pedidos.filter((p) => p.season === temporadaActual) : pedidos
     // Los indicadores no cuentan cancelados; la lista de ultimos pedidos muestra todos los estados
-    const ok = vigentes(pedidos)
-    const recientes = [...pedidos].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, ULTIMOS)
+    const ok = vigentes(deLaTemporada)
+    const recientes = [...deLaTemporada].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, ULTIMOS)
     return {
       ventas: ok.reduce((s, p) => s + ventaDe(p), 0),
       costo: ok.reduce((s, p) => s + costoDe(p), 0),
@@ -97,7 +99,7 @@ export default function Dashboard() {
       enviados: ok.filter((p) => p.status === 'sent').length,
       recientes,
     }
-  }, [pedidos])
+  }, [pedidos, temporadaActual])
 
   const temporadas = useMemo(
     () =>
@@ -306,7 +308,7 @@ export default function Dashboard() {
               )}
             </div>
             {datos.recientes.length === 0 ? (
-              <Vacio titulo="Todavia no hay pedidos" />
+              <Vacio titulo={temporadaActual ? 'Todavia no hay pedidos en esta temporada' : 'Todavia no hay pedidos'} />
             ) : (
               <Tabla
                 columnas={columnas}
