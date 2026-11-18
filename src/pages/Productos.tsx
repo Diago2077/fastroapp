@@ -85,6 +85,7 @@ export default function Productos() {
           supabase
             .from('products')
             .select('*, providers(name), product_variants(id, color, size, sale_price)')
+            .eq('product_variants.active', true)
             .eq('active', true)
             // Mas nuevos primero; los cargados juntos (importacion) comparten fecha, ahi manda el codigo
             .order('created_at', { ascending: false })

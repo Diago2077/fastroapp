@@ -51,7 +51,9 @@ const lotes = <T,>(arr: T[], n = 400): T[][] =>
  *    Marcas y Proveedores); si falta alguno no se importa nada y se lista que
  *    corregir. Se escribe el nombre tal como esta registrado.
  *  · Las variantes de un producto importado quedan EXACTAMENTE las del
- *    archivo: las que no figuran se eliminan.
+ *    archivo: las que no figuran dejan de ofrecerse. Si algun pedido las usa se
+ *    desactivan (el pedido conserva su producto, color y talla); si no, se borran.
+ *    Una que vuelve a venir en el archivo se reactiva.
  *  · El costo solo se importa con `can_see_cost`.
  */
 export function ImportarProductosModal({
@@ -227,6 +229,7 @@ export function ImportarProductosModal({
           color: v.color,
           size: v.size,
           sale_price: v.sale,
+          active: true,
         })),
       )
       const costoPorClave = new Map<string, number>()
@@ -258,7 +261,7 @@ export function ImportarProductosModal({
         }
       }
       for (const lote of lotes(sobrantes, 100)) {
-        const { error: err } = await supabase.from('product_variants').delete().in('id', lote)
+        const { error: err } = await supabase.rpc('retirar_variantes', { p_ids: lote })
         if (err) throw err
       }
 

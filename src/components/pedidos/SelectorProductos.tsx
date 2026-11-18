@@ -96,7 +96,12 @@ export function SelectorProductos({
         .eq('id', variantInicial)
         .maybeSingle()
       if (!v || !vivo) return
-      const { data } = await supabase.from('products').select(SELECT_PRODUCTO).eq('id', v.product_id).maybeSingle()
+      const { data } = await supabase
+        .from('products')
+        .select(SELECT_PRODUCTO)
+        .eq('id', v.product_id)
+        .eq('product_variants.active', true)
+        .maybeSingle()
       if (data && vivo) elegir(data as ProductoBusqueda)
     })()
     return () => {
@@ -120,6 +125,7 @@ export function SelectorProductos({
         .from('products')
         .select(SELECT_PRODUCTO)
         .eq('active', true)
+        .eq('product_variants.active', true)
         .eq('provider_id', proveedorId)
       if (temporada.trim()) consulta = consulta.eq('season', temporada.trim())
       const { data } = await consulta

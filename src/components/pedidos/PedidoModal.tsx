@@ -186,7 +186,7 @@ export function PedidoModal({
           for (let k = 0; k < ids.length; k += 150) {
             const { data, error: errV } = await supabase
               .from('product_variants')
-              .select('id, sale_price, products(active), product_variant_costs(cost_price)')
+              .select('id, sale_price, active, products(active), product_variant_costs(cost_price)')
               .in('id', ids.slice(k, k + 150))
             if (errV) {
               setError('No se pudo traer los precios vigentes para duplicar.')
@@ -196,11 +196,12 @@ export function PedidoModal({
             for (const v of (data ?? []) as unknown as {
               id: string
               sale_price: number
+              active: boolean
               products: { active: boolean } | { active: boolean }[] | null
               product_variant_costs: { cost_price: number } | { cost_price: number }[] | null
             }[]) {
               const prod = Array.isArray(v.products) ? v.products[0] : v.products
-              if (prod && !prod.active) continue
+              if ((prod && !prod.active) || !v.active) continue
               const c = Array.isArray(v.product_variant_costs) ? v.product_variant_costs[0] : v.product_variant_costs
               vigentes.set(v.id, { price: v.sale_price, cost: c?.cost_price ?? null })
             }

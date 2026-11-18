@@ -100,6 +100,7 @@ export function ProductoForm({
       .from('products')
       .select('*, product_variants(id, color, size, sale_price, product_variant_costs(cost_price))')
       .eq('id', productoId)
+      .eq('product_variants.active', true)
       .single()
       .then(({ data, error: err }) => {
         if (!vivo) return
@@ -182,6 +183,7 @@ export function ProductoForm({
           color,
           size: t.size,
           sale_price: Number(t.sale),
+          active: true,
         })),
       )
       const { data: guardadas, error: errVar } = await supabase
@@ -191,11 +193,16 @@ export function ProductoForm({
       if (errVar) throw errVar
 
       // Variantes que ya no estan en la grilla
-      const { data: actuales } = await supabase.from('product_variants').select('id, color, size').eq('product_id', id!)
+      const { data: actuales } = await supabase
+        .from('product_variants')
+        .select('id, color, size')
+        .eq('product_id', id!)
+        .eq('active', true)
       const vigentes = new Set(filas.map((f) => `${f.color}\u0000${f.size}`))
       const sobrantes = (actuales ?? []).filter((v) => !vigentes.has(`${v.color}\u0000${v.size}`)).map((v) => v.id as string)
       if (sobrantes.length) {
-        const { error: errDel } = await supabase.from('product_variants').delete().in('id', sobrantes)
+        // Las que algun pedido usa se desactivan en vez de borrarse
+        const { error: errDel } = await supabase.rpc('retirar_variantes', { p_ids: sobrantes })
         if (errDel) throw errDel
       }
 
