@@ -1,6 +1,8 @@
 import type { EstadoPedido, Pedido } from '@/lib/database.types'
 import { ESTADO_LABEL } from '@/lib/database.types'
-import { formatFecha, formatGsPdf, totalesPedido } from '@/lib/format'
+import { traerTodo } from '@/lib/db'
+import { exportarExcel, type Columna } from '@/lib/exportar'
+import { formatFecha, formatGsPdf, hoyISO, totalesPedido } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 
 
@@ -186,6 +188,51 @@ export async function exportarPedidoPDF(id: string) {
   }
 
   doc.save(`${p.order_number}.pdf`)
+}
+
+interface LineaDetalle {
+  pedido: PedidoCompleto
+  linea: ReturnType<typeof lineas>[number]
+}
+
+/**
+ * Excel detallado de VARIOS pedidos (los de la lista filtrada): una fila por
+ * linea, con el pedido y el cliente repetidos en cada una. Respeta el orden en
+ * que vienen los ids. El costo solo sale con `conCosto` (can_see_cost).
+ */
+export async function exportarDetalleExcel(ids: string[], conCosto: boolean) {
+  const select =
+    '*, clients(name, ruc, phone, code, store_name), vendedor:usuarios(nombre), providers(name), order_items(quantity, unit_sale_price, product_variants(color, size, products(code, description)), order_item_costs(unit_cost_price))'
+  const porId = new Map<string, PedidoCompleto>()
+  for (let i = 0; i < ids.length; i += 50) {
+    const lote = ids.slice(i, i + 50)
+    const pedidos = await traerTodo<PedidoCompleto>(() => supabase.from('orders').select(select).in('id', lote).order('id'))
+    for (const p of pedidos) porId.set(p.id, p)
+  }
+  const filas: LineaDetalle[] = ids
+    .map((id) => porId.get(id))
+    .filter((p): p is PedidoCompleto => Boolean(p))
+    .flatMap((pedido) => lineas(pedido).map((linea) => ({ pedido, linea })))
+
+  const columnas: Columna<LineaDetalle>[] = [
+    { header: 'N° Pedido', valor: (f) => f.pedido.order_number, ancho: 12 },
+    { header: 'Fecha', valor: (f) => formatFecha(f.pedido.created_at), ancho: 12 },
+    { header: 'Cliente', valor: (f) => f.pedido.clients?.name ?? '', ancho: 32 },
+    { header: 'Proveedor', valor: (f) => f.pedido.providers?.name ?? '', ancho: 26 },
+    { header: 'Temporada', valor: (f) => f.pedido.season ?? '', ancho: 12 },
+    { header: 'Estado', valor: (f) => ESTADO_LABEL[f.pedido.status], ancho: 12 },
+    { header: 'Vendedor', valor: (f) => f.pedido.vendedor?.nombre ?? '', ancho: 22 },
+    { header: 'Codigo', valor: (f) => f.linea.codigo, ancho: 12 },
+    { header: 'Descripcion', valor: (f) => f.linea.descripcion, ancho: 36 },
+    { header: 'Color', valor: (f) => f.linea.color, ancho: 14 },
+    { header: 'Talla', valor: (f) => f.linea.talla, ancho: 8 },
+    { header: 'Cantidad', valor: (f) => f.linea.cantidad, ancho: 10 },
+    { header: 'P. Venta (Gs)', valor: (f) => f.linea.precio, ancho: 16 },
+    ...(conCosto ? [{ header: 'P. Costo (US$)', valor: (f: LineaDetalle) => f.linea.costo ?? '', ancho: 16 }] : []),
+    { header: 'Subtotal (Gs)', valor: (f) => f.linea.subtotal, ancho: 16 },
+    { header: 'Descuento del pedido %', valor: (f) => f.pedido.discount_pct, ancho: 14 },
+  ]
+  await exportarExcel({ hoja: 'Detalle', columnas, filas, archivo: `pedidos-detallado-${hoyISO()}.xlsx` })
 }
 
 /** El costo solo se incluye si `conCosto` (can_see_cost): la base ya no lo devuelve sin permiso. */

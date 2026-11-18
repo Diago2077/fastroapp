@@ -17,6 +17,7 @@ import { fechaLocalISO, formatFecha, formatGs, formatGsPdf, formatUsd, hoyISO, n
 import {
   cambioSoloAdmin,
   costoPedido,
+  exportarDetalleExcel,
   SELECT_LISTA,
   SIGUIENTE_ESTADO,
   TONO_ESTADO,
@@ -182,6 +183,20 @@ export default function Pedidos() {
       archivo: `pedidos-${hoyISO()}.xlsx`,
     })
 
+  const [exportandoDetalle, setExportandoDetalle] = useState(false)
+  async function exportarDetalle() {
+    setExportandoDetalle(true)
+    try {
+      await exportarDetalleExcel(
+        filas.map((p) => p.id),
+        verCosto,
+      )
+    } catch {
+      toast.error('No se pudo exportar el detalle.')
+    }
+    setExportandoDetalle(false)
+  }
+
   const columnas: ColumnaTabla<PedidoLista>[] = [
     { id: 'num', header: 'N° Pedido', render: (p) => <span className="font-medium">{p.order_number}</span>, orden: (p) => p.order_number },
     { id: 'fecha', header: 'Fecha', render: (p) => formatFecha(p.created_at), orden: (p) => p.created_at },
@@ -244,6 +259,17 @@ export default function Pedidos() {
                     {can('can_export_excel') && (
                       <Button variant="outline" size="sm" disabled={filas.length === 0} onClick={exportarListaExcel}>
                         <FileSpreadsheet /> Excel
+                      </Button>
+                    )}
+                    {can('can_export_excel') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={filas.length === 0 || exportandoDetalle}
+                        onClick={exportarDetalle}
+                        title="Una fila por producto, con el pedido y el cliente repetidos"
+                      >
+                        <FileSpreadsheet /> {exportandoDetalle ? 'Generando…' : 'Excel detallado'}
                       </Button>
                     )}
                   </div>
